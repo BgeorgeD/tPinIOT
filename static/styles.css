@@ -1,0 +1,173 @@
+* {
+    margin: 0 ;
+}
+
+body {
+  font-family: "Lato", sans-serif;
+}
+
+h1 {
+    background-color: #b1c9bb;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 2px 4px #008080;
+    color:white
+}
+
+/* Container for sidenav */
+#mySidenav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;           /* stays invisible */
+}
+
+/* The sliding tall tab */
+#mySidenav a {
+  position: absolute;
+  left: -80px;        /* hidden initially */
+  top: 0;
+  width: 120px;
+  height: 100%;
+  padding: 15px;
+  font-size: 20px;
+  color: white;
+  background-color: #b1c9bb;
+  text-decoration: none;
+  border-radius: 0 5px 5px 0;
+  transition: 0.3s;
+  box-shadow: 0 2px 8px 1px #333;
+}
+
+#mySidenav a:hover {
+  left: 0;  /* slides in */
+}
+
+#about {
+  top: 20px;
+}
+
+/* Container for big cards */
+.card-container {
+  max-width: 85%;
+  margin: 40px auto;
+  margin-left: 140px;   /* leave room for sidenav */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Big teal cards */
+.card {
+  background-color: #008080;
+  min-height: 200px;
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+/* Container for inner cards */
+.inner-card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Inner cards */
+.inner-card {
+  background-color: #20b2aa;
+  color: white;
+  flex: 1 1 30%;
+  min-width: 180px;
+  height: 200px;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+/* Small info bar inside each inner card */
+.inner-info-bar {
+    background-color: #d3d3d3; /* grey */
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+/* Charts inside inner cards */
+.inner-card canvas {
+    width: 100% !important;
+    height: calc(100% - 50px) !important;  /* leave room for info bar + heading */
+    object-fit: contain;
+}
+
+.controls-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+.controls-btn {
+    padding: 18px 40px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    background-color: white;
+    color: #008080 ;
+    border:solid 4px #008080 ;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: 0.2s;
+    width:25%;
+}
+
+.controls-btn:hover {
+    background-color: white;
+    transform: scale(1.03);
+    border:solid 4px white;
+    background-color: #008080;
+    color: white;
+}
+
+
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .inner-card {
+        flex: 1 1 45%;
+        height: 180px;
+    }
+}
+
+@media (max-width: 500px) {
+    .controls-container {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 95%;
+    }
+}
+
+
+@media (max-width: 500px) {
+    .inner-card {
+        flex: 1 1 90%;
+        height: 160px;
+    }
+    .card-container {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 95%;
+    }
+}

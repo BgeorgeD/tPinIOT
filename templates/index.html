@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- SIDENAV -->
+<div id="mySidenav" class="sidenav">
+  <a href="#" id="about">Menu</a>
+</div>
+
+<!-- HEADER -->
+<h1>WaterSight</h1>
+
+<!-- CARD CONTAINER -->
+<div class="card-container">
+
+  <!-- CARD ONE -->
+  <div class="card">
+    <h2>Tank 1</h2>
+    <p>First card description...</p>
+
+    <div class="inner-card-container">
+      <div class="inner-card">
+        <div class="inner-info-bar">Temperature: 24°C</div>
+        <h3>Temperature Graph</h3>
+        <canvas id="graph1"></canvas>
+      </div>
+      <div class="inner-card">
+        <div class="inner-info-bar">Oxygen: 7.8 mg/L</div>
+        <h3>Oxygen Graph</h3>
+        <canvas id="graph2"></canvas>
+      </div>
+      <div class="inner-card">
+        <div class="inner-info-bar">pH: 7.2</div>
+        <h3>pH Graph</h3>
+        <canvas id="graph3"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD TWO -->
+  <div class="card">
+    <h2>Tank 2</h2>
+    <p>Second card description...</p>
+
+    <div class="inner-card-container">
+      <div class="inner-card">
+        <div class="inner-info-bar">Temperature: 23°C</div>
+        <h3>Temperature Graph</h3>
+        <canvas id="graph4"></canvas>
+      </div>
+      <div class="inner-card">
+        <div class="inner-info-bar">Oxygen: 8.0 mg/L</div>
+        <h3>Oxygen Graph</h3>
+        <canvas id="graph5"></canvas>
+      </div>
+      <div class="inner-card">
+        <div class="inner-info-bar">pH: 7.3</div>
+        <h3>pH Graph</h3>
+        <canvas id="graph6"></canvas>
+      </div>
+    </div>
+  </div>
+    <!-- CONTROLS BUTTON INSIDE CARD CONTAINER -->
+  <div class="controls-container">
+      <button class="controls-btn">Controls</button>
+  </div>
+
+</div> <!-- end of card-container -->
+
+</div>
+
+
+
+</body>
+
+<!-- CHART.JS DEMO LINE CHARTS -->
+<script>
+const demoData = {
+    labels: ['Mon','Tue','Wed','Thu','Fri'],
+    datasets: [{
+        label: 'Demo Value',
+        data: [12,19,7,15,10],
+        borderColor: 'rgba(255,255,255,1)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        fill: true,
+        tension: 0.3
+    }]
+};
+
+for(let i=1;i<=6;i++){
+    const ctx = document.getElementById('graph'+i).getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: demoData,
+        options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+        mode: 'nearest',     // find nearest point
+        intersect: false     // show tooltip even if not exactly on the point
+    },
+    plugins: {
+        tooltip: {
+            enabled: true,   // show tooltips
+            mode: 'nearest',
+            intersect: false
+        },
+        legend: { display: false },
+        title: { display: false }
+    },
+    scales: {
+        y: { beginAtZero: true },
+        x: { beginAtZero: false }
+    }
+}
+
+    });
+}
+</script>
+
+</body>
+</html>
