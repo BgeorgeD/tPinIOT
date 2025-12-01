@@ -66,8 +66,14 @@
     </div>
   </div>
     <!-- CONTROLS BUTTON INSIDE CARD CONTAINER -->
-  <div class="controls-container">
-      <button class="controls-btn">Controls</button>
+  <div class="controls-container" style="gap: 20px;">
+      <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">
+          💨 Pornște Aerator
+      </button>
+
+      <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">
+          🔄 Pornește Filtru
+      </button>
   </div>
 
 </div> <!-- end of card-container -->
@@ -80,47 +86,126 @@
 
 <!-- CHART.JS DEMO LINE CHARTS -->
 <script>
-const demoData = {
-    labels: ['Mon','Tue','Wed','Thu','Fri'],
-    datasets: [{
-        label: 'Demo Value',
-        data: [12,19,7,15,10],
-        borderColor: 'rgba(255,255,255,1)',
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        fill: true,
-        tension: 0.3
-    }]
-};
+    // 1. Initializare Grafice GOALE
+    const ctxTemp = document.getElementById('graph1').getContext('2d');
+    const ctxOxigen = document.getElementById('graph2').getContext('2d');
+    const ctxPh = document.getElementById('graph3').getContext('2d');
 
-for(let i=1;i<=6;i++){
-    const ctx = document.getElementById('graph'+i).getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: demoData,
-        options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-        mode: 'nearest',     // find nearest point
-        intersect: false     // show tooltip even if not exactly on the point
-    },
-    plugins: {
-        tooltip: {
-            enabled: true,   // show tooltips
-            mode: 'nearest',
-            intersect: false
-        },
-        legend: { display: false },
-        title: { display: false }
-    },
-    scales: {
-        y: { beginAtZero: true },
-        x: { beginAtZero: false }
+    // Functie ajutatoare pentru configurarea graficelor
+    function createChart(ctx, label, color) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Timpul (axa X) va fi adaugat dinamic
+                datasets: [{
+                    label: label,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color.replace('1)', '0.2)'),
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false } }, // Ascundem axa X sa fie curat
+                animation: { duration: 0 } // Oprim animatia ca sa nu "danseze" la fiecare secunda
+            }
+        });
     }
-}
 
-    });
-}
+    // Cream cele 3 grafice pentru Tank 1
+    const chartTemp = createChart(ctxTemp, 'Temperatura', 'rgba(255, 99, 132, 1)');
+    const chartOxigen = createChart(ctxOxigen, 'Oxigen', 'rgba(54, 162, 235, 1)');
+    const chartPh = createChart(ctxPh, 'pH', 'rgba(75, 192, 192, 1)');
+
+    // 2. Functia care cere date de la Python (app.py)
+    async function fetchData() {
+        try {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+
+            // Verificam daca avem date valide
+            if (data.temperatura !== undefined) {
+                updateDashboard(data);
+            }
+        } catch (error) {
+            console.error('Eroare la preluarea datelor:', error);
+        }
+    }
+
+    // --- FUNCTIA PENTRU BUTOANE ---
+    async function trimiteComanda(actiune) {
+        // Facem butonul sa reactioneze vizual
+        alert("Trimit comanda: " + actiune);
+
+        try {
+            // Trimitem comanda catre serverul nostru Python (app.py)
+            const response = await fetch('/api/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ actiune: actiune })
+            });
+
+            const result = await response.json();
+            console.log("Raspuns server:", result);
+
+        } catch (error) {
+            console.error("Eroare la trimiterea comenzii:", error);
+        }
+    }
+
+    // 3. Functia care actualizeaza ecranul
+    function updateDashboard(data) {
+        const now = new Date().toLocaleTimeString();
+
+        // --- Actualizare TEXTE (Cardul Tank 1) ---
+        // Cautam div-urile care contin textul si le schimbam
+        // Nota: Aceasta metoda cauta in inner-card-container primul element
+        const cards = document.querySelectorAll('.card')[0]; // Tank 1
+        const infos = cards.querySelectorAll('.inner-info-bar');
+
+        infos[0].innerText = `Temperature: ${data.temperatura}°C`;
+        infos[1].innerText = `Oxygen: ${data.oxigen} mg/L`;
+        infos[2].innerText = `pH: ${data.ph}`;
+
+        // --- Actualizare GRAFICE ---
+        addDataToChart(chartTemp, now, data.temperatura);
+        addDataToChart(chartOxigen, now, data.oxigen);
+        addDataToChart(chartPh, now, data.ph);
+    }
+
+    function addDataToChart(chart, label, data) {
+        // Adaugam date noi
+        chart.data.labels.push(label);
+        chart.data.datasets.forEach((dataset) => {
+            dataset.data.push(data);
+        });
+
+        // Pastram doar ultimele 20 de puncte (sa nu se aglomereze)
+        if (chart.data.labels.length > 20) {
+            chart.data.labels.shift();
+            chart.data.datasets.forEach((dataset) => {
+                dataset.data.shift();
+            });
+        }
+        chart.update();
+    }
+
+    // 4. Pornim ceasul! (Cere date la fiecare 2 secunde)
+    setInterval(fetchData, 2000);
+
+    // Initializam si graficele goale pentru Tank 2 (doar vizual, momentan)
+    // Poti repeta logica de mai sus si pentru Tank 2 cand vei avea date
+    for(let i=4; i<=6; i++){
+         const ctx = document.getElementById('graph'+i).getContext('2d');
+         createChart(ctx, 'Demo Tank 2', 'rgba(200, 200, 200, 1)');
+    }
+
 </script>
 
 </body>

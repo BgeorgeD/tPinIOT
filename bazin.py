@@ -9,22 +9,31 @@ PORT = 1883
 TOPIC_DATE = "acvacultura/student/bazin1/senzori"
 TOPIC_COMENZI = "acvacultura/student/bazin1/comenzi"
 
+# Stare initiala actuator
+incalzitor_pornit = False
+
 
 # --- ACTUATOR (Ce face bazinul cand primeste comanda) ---
 def on_message(client, userdata, msg):
+    global incalzitor_pornit  # Folosim variabila globala ca sa o putem modifica
     comanda = msg.payload.decode()
     print(f"\n[ACTUATOR] !!! Am primit comanda: {comanda}")
 
     if "START_INCALZITOR" in comanda:
-        print("           -> PORNESC REZISTENTA DE INCALZIRE (CLIC-CLIC)")
-        print("           -> Apa incepe sa se incalzeasca...\n")
+        incalzitor_pornit = True
+        print("           -> [HARDWARE] REZISTENTA PORNITA (Se incalzeste...)")
+
+    elif "STOP_INCALZITOR" in comanda:
+        incalzitor_pornit = False
+        print("           -> [HARDWARE] REZISTENTA OPRITA (Racire naturala...)")
+
+    elif "START_AERATOR" in comanda:
+        print("           -> [HARDWARE] Aeratorul face bule! Ooo Ooo")
 
 
 # --- CONECTARE ---
-# AICI ERA EROAREA - AM CORECTAT LINIA DE MAI JOS:
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "Simulare_Bazin_Fizic")
-
-client.on_connect = lambda c, u, f, rc: print("[BAZIN] Conectat la reteaua de test.")
+client.on_connect = lambda c, u, f, rc: print("[BAZIN] Conectat. Simulez fizica apei...")
 client.on_message = on_message
 
 client.connect(BROKER, PORT)
@@ -36,21 +45,29 @@ temp_apa = 24.0
 
 try:
     while True:
-        # 1. Simulam natura: temperatura scade incet
-        scadere = random.uniform(0.1, 0.4)
-        temp_apa -= scadere
+        # --- LOGICA DE SIMULARE FIZICA ---
+        if incalzitor_pornit == True:
+            # Daca incalzitorul e pornit, temperatura CRESTE
+            crestere = random.uniform(0.3, 0.6)
+            temp_apa += crestere
+            print(f"   [FIZICA] Incalzitor ON. Apa se incalzeste (+{crestere:.2f})")
+        else:
+            # Daca incalzitorul e oprit, temperatura SCADE (natural)
+            scadere = random.uniform(0.1, 0.3)
+            temp_apa -= scadere
+            print(f"   [FIZICA] Incalzitor OFF. Apa se raceste (-{scadere:.2f})")
 
-        # 2. Impachetam datele
+        # Impachetam si trimitem datele
         pachet = {
             "temperatura": round(temp_apa, 2),
-            "ph": 7.0
+            "ph": 7.0,
+            "incalzitor": "PORNIT" if incalzitor_pornit else "OPRIT"
         }
 
-        # 3. Trimitem datele (PUBLICAM)
-        print(f"[SENZOR] Temperatura a scazut la: {pachet['temperatura']} C -> Trimit date...")
+        print(f"[SENZOR] Trimit Temp: {pachet['temperatura']} C")
         client.publish(TOPIC_DATE, json.dumps(pachet))
 
-        time.sleep(3)
+        time.sleep(3)  # Pauza de 3 secunde
 
 except KeyboardInterrupt:
     client.loop_stop()
