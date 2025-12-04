@@ -21,7 +21,7 @@
   <!-- CARD ONE -->
   <div class="card">
     <h2>Tank 1</h2>
-    <p>First card description...</p>
+    <p></p>
 
     <div class="inner-card-container">
       <div class="inner-card">
@@ -45,7 +45,7 @@
   <!-- CARD TWO -->
   <div class="card">
     <h2>Tank 2</h2>
-    <p>Second card description...</p>
+    <p></p>
 
     <div class="inner-card-container">
       <div class="inner-card">
@@ -68,13 +68,73 @@
     <!-- CONTROLS BUTTON INSIDE CARD CONTAINER -->
   <div class="controls-container" style="gap: 20px;">
       <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">
-          💨 Pornște Aerator
+           Start Aerator
       </button>
 
       <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">
-          🔄 Pornește Filtru
+           Start Filter
+      </button>
+
+      <button class="controls-btn" onclick="toggleLimitsCard()">
+           Adjust Limits
       </button>
   </div>
+
+  <!-- LIMITS ADJUSTMENT CARD -->
+  <div class="card" id="limitsCard" style="display: none;">
+    <h2> Adjust Parameter Limits</h2>
+    <p>Set the safe operating ranges for each parameter</p>
+
+    <div class="limits-wrapper">
+      
+      <!-- Temperature -->
+      <div class="limit-box">
+        <h3> Temperature (°C)</h3>
+        <div class="limit-row">
+          <label>
+            Min: <input type="number" id="tempMin" step="0.5">
+          </label>
+          <label>
+            Max: <input type="number" id="tempMax" step="0.5">
+          </label>
+        </div>
+      </div>
+
+      <!-- Oxygen -->
+      <div class="limit-box">
+        <h3> Oxygen (mg/L)</h3>
+        <div class="limit-row">
+          <label>
+            Min: <input type="number" id="oxygenMin" step="0.5">
+          </label>
+          <label>
+            Max: <input type="number" id="oxygenMax" step="0.5">
+          </label>
+        </div>
+      </div>
+
+      <!-- pH -->
+      <div class="limit-box">
+        <h3> pH Level</h3>
+        <div class="limit-row">
+          <label>
+            Min: <input type="number" id="phMin" step="0.1">
+          </label>
+          <label>
+            Max: <input type="number" id="phMax" step="0.1">
+          </label>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="limit-save-container">
+        <button onclick="saveLimits()" class="limit-save-btn">
+          💾 Save Limits
+        </button>
+      </div>
+    </div>
+  </div>
+
 
 </div> <!-- end of card-container -->
 
@@ -91,8 +151,11 @@
     const ctxOxigen = document.getElementById('graph2').getContext('2d');
     const ctxPh = document.getElementById('graph3').getContext('2d');
 
-    // Functie ajutatoare pentru configurarea graficelor
-    function createChart(ctx, label, color) {
+    // Variabila pentru limitele primite de la server
+    let limite = null;
+
+    // Functie ajutatoare pentru configurarea graficelor cu scara Y fixa
+    function createChart(ctx, label, color, yMin, yMax, stepSize) {
         return new Chart(ctx, {
             type: 'line',
             data: {
@@ -110,16 +173,29 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { x: { display: false } }, // Ascundem axa X sa fie curat
+                scales: { 
+                    x: { display: false }, // Ascundem axa X sa fie curat
+                    y: {
+                        min: yMin,      // Limita minima
+                        max: yMax,      // Limita maxima
+                        ticks: {
+                            color: 'white',
+                            stepSize: stepSize
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                },
                 animation: { duration: 0 } // Oprim animatia ca sa nu "danseze" la fiecare secunda
             }
         });
     }
 
-    // Cream cele 3 grafice pentru Tank 1
-    const chartTemp = createChart(ctxTemp, 'Temperatura', 'rgba(255, 99, 132, 1)');
-    const chartOxigen = createChart(ctxOxigen, 'Oxigen', 'rgba(54, 162, 235, 1)');
-    const chartPh = createChart(ctxPh, 'pH', 'rgba(75, 192, 192, 1)');
+    // Cream cele 3 grafice pentru Tank 1 cu scari fixe
+    const chartTemp = createChart(ctxTemp, 'Temperatura', 'rgba(255, 99, 132, 1)', 20, 30, 2);      // 20-30°C
+    const chartOxigen = createChart(ctxOxigen, 'Oxigen', 'rgba(54, 162, 235, 1)', 0, 15, 3);        // 0-15 mg/L
+    const chartPh = createChart(ctxPh, 'pH', 'rgba(75, 192, 192, 1)', 6, 9, 0.5);                   // pH 6-9
 
     // 2. Functia care cere date de la Python (app.py)
     async function fetchData() {
@@ -129,10 +205,81 @@
 
             // Verificam daca avem date valide
             if (data.temperatura !== undefined) {
+                // Salvam limitele daca le primim prima data
+                if(data.limite && !limite) {
+                    limite = data.limite;
+                    console.log("Limite primite de la server:", limite);
+                    // Populam formul cu valorile curente
+                    populateLimitsForm();
+                }
                 updateDashboard(data);
             }
         } catch (error) {
             console.error('Eroare la preluarea datelor:', error);
+        }
+    }
+
+    // --- FUNCTIA PENTRU TOGGLE LIMITS CARD ---
+    function toggleLimitsCard() {
+        const card = document.getElementById('limitsCard');
+        if(card.style.display === 'none') {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    }
+
+    // --- FUNCTIA PENTRU POPULARE FORM CU LIMITE CURENTE ---
+    function populateLimitsForm() {
+        if(limite) {
+            document.getElementById('tempMin').value = limite.temperatura.min;
+            document.getElementById('tempMax').value = limite.temperatura.max;
+            document.getElementById('oxygenMin').value = limite.oxigen.min;
+            document.getElementById('oxygenMax').value = limite.oxigen.max;
+            document.getElementById('phMin').value = limite.ph.min;
+            document.getElementById('phMax').value = limite.ph.max;
+        }
+    }
+
+    // --- FUNCTIA PENTRU SALVARE LIMITE NOI ---
+    async function saveLimits() {
+        const newLimits = {
+            temperatura: {
+                min: parseFloat(document.getElementById('tempMin').value),
+                max: parseFloat(document.getElementById('tempMax').value)
+            },
+            oxigen: {
+                min: parseFloat(document.getElementById('oxygenMin').value),
+                max: parseFloat(document.getElementById('oxygenMax').value)
+            },
+            ph: {
+                min: parseFloat(document.getElementById('phMin').value),
+                max: parseFloat(document.getElementById('phMax').value)
+            }
+        };
+
+        try {
+            const response = await fetch('/api/limits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newLimits)
+            });
+
+            const result = await response.json();
+            
+            if(result.status === 'success') {
+                limite = newLimits; // Actualizam limitele locale
+                alert(' Limits saved');
+                toggleLimitsCard(); // Inchidem cardul
+            } else {
+                alert('❌ Error occured while saving');
+            }
+
+        } catch (error) {
+            console.error('❌ Error occured while saving:', error);
+            alert('❌ Error occured while saving');
         }
     }
 
@@ -168,10 +315,35 @@
         // Nota: Aceasta metoda cauta in inner-card-container primul element
         const cards = document.querySelectorAll('.card')[0]; // Tank 1
         const infos = cards.querySelectorAll('.inner-info-bar');
+        const innerCards = cards.querySelectorAll('.inner-card');
 
         infos[0].innerText = `Temperature: ${data.temperatura}°C`;
         infos[1].innerText = `Oxygen: ${data.oxigen} mg/L`;
         infos[2].innerText = `pH: ${data.ph}`;
+
+        // --- Verificare limite si schimbare culoare (folosim limitele de la server) ---
+        if(limite) {
+            // Temperatura
+            if(data.temperatura < limite.temperatura.min || data.temperatura > limite.temperatura.max) {
+                innerCards[0].style.backgroundColor = '#dc3545'; // Rosu
+            } else {
+                innerCards[0].style.backgroundColor = '#20b2aa'; // Turcoaz normal
+            }
+
+            // Oxigen
+            if(data.oxigen < limite.oxigen.min || data.oxigen > limite.oxigen.max) {
+                innerCards[1].style.backgroundColor = '#dc3545'; // Rosu
+            } else {
+                innerCards[1].style.backgroundColor = '#20b2aa'; // Turcoaz normal
+            }
+
+            // pH
+            if(data.ph < limite.ph.min || data.ph > limite.ph.max) {
+                innerCards[2].style.backgroundColor = '#dc3545'; // Rosu
+            } else {
+                innerCards[2].style.backgroundColor = '#20b2aa'; // Turcoaz normal
+            }
+        }
 
         // --- Actualizare GRAFICE ---
         addDataToChart(chartTemp, now, data.temperatura);
@@ -203,7 +375,10 @@
     // Poti repeta logica de mai sus si pentru Tank 2 cand vei avea date
     for(let i=4; i<=6; i++){
          const ctx = document.getElementById('graph'+i).getContext('2d');
-         createChart(ctx, 'Demo Tank 2', 'rgba(200, 200, 200, 1)');
+         // Tank 2: Temperatura (graph4), Oxigen (graph5), pH (graph6)
+         if(i === 4) createChart(ctx, 'Demo Tank 2', 'rgba(255, 99, 132, 1)', 20, 30, 2);
+         if(i === 5) createChart(ctx, 'Demo Tank 2', 'rgba(54, 162, 235, 1)', 0, 15, 3);
+         if(i === 6) createChart(ctx, 'Demo Tank 2', 'rgba(75, 192, 192, 1)', 6, 9, 0.5);
     }
 
 </script>

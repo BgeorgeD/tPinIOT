@@ -1,6 +1,7 @@
 import json
 import paho.mqtt.client as mqtt
 import os
+from config import LIMITA_MINIMA, LIMITA_MAXIMA  # <--- Importam din config
 
 # --- CONFIGURARE ---
 BROKER = "test.mosquitto.org"
@@ -8,8 +9,9 @@ PORT = 1883
 TOPIC_DATE = "acvacultura/student/bazin1/senzori"
 TOPIC_COMENZI = "acvacultura/student/bazin1/comenzi"
 
-LIMITA_MINIMA = 22.0  # Prea frig
-LIMITA_MAXIMA = 24.0  # Destul de cald, opreste incalzirea
+# Limitele sunt acum importate din config.py
+# LIMITA_MINIMA = 22.0  # <--- STERS
+# LIMITA_MAXIMA = 24.0  # <--- STERS
 
 FISIER_STATUS = "status_bazin.json"
 

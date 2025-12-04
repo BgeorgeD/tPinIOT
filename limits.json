@@ -1,0 +1,14 @@
+{
+    "temperatura": {
+        "min": 21,
+        "max": 24
+    },
+    "oxigen": {
+        "min": 6,
+        "max": 9
+    },
+    "ph": {
+        "min": 6,
+        "max": 9
+    }
+}

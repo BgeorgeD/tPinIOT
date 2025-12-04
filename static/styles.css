@@ -142,6 +142,59 @@ h1 {
 }
 
 
+/* Limits card layout */
+.limits-wrapper {
+    max-width: 600px;
+    margin: 20px auto;
+    text-align: left;
+}
+
+/* Box around each limit section */
+.limit-box {
+    margin-bottom: 20px;
+    background: #20b2aa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.limit-box h3 {
+    margin-bottom: 10px;
+}
+
+/* Row that holds min/max inputs */
+.limit-row {
+    display: flex;
+    justify-content: space-between; /* Push Min left, Max right */
+    align-items: center;
+    gap: 20px; /* optional small gap */
+}
+
+/* Inputs styling */
+.limit-row input {
+    width: 80px;
+    padding: 5px;
+    border-radius: 5px;
+    border: none;
+}
+
+/* Save button */
+.limit-save-container {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.limit-save-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    background: rgb(255, 255, 255);
+    color: #008080;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
