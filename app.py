@@ -35,7 +35,10 @@ def save_limits(new_limits):
 
 def trimite_comanda_mqtt(comanda):
     try:
-        client = mqtt.Client("Web_Interface")
+        client = mqtt.Client(
+            client_id="Web_Interface",
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1
+        )
         client.connect(BROKER, PORT)
         client.publish(TOPIC_COMENZI, comanda)
         client.disconnect()
@@ -43,6 +46,7 @@ def trimite_comanda_mqtt(comanda):
     except Exception as e:
         print(f"Eroare MQTT Web: {e}")
         return False
+
 
 
 # --- ROUTES ---

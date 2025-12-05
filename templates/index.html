@@ -136,6 +136,8 @@
   </div>
 
 
+
+
 </div> <!-- end of card-container -->
 
 </div>
@@ -191,6 +193,32 @@
             }
         });
     }
+
+    function updateDashboard(data) {
+    const now = new Date().toLocaleTimeString();
+
+    const cards = document.querySelectorAll('.card')[0]; // Tank 1
+    const infos = cards.querySelectorAll('.inner-info-bar');
+    const innerCards = cards.querySelectorAll('.inner-card');
+
+    infos[0].innerText = `Temperature: ${data.temperatura}°C`;
+    infos[1].innerText = `Oxygen: ${data.oxigen} mg/L`;
+    infos[2].innerText = `pH: ${data.ph}`;
+
+    // ACTUATORI
+    if (data.incalzitor) {
+        infos[0].innerText += ` | Heater: ${data.incalzitor}`;
+    }
+    if (data.filtru) {
+        infos[1].innerText += ` | Filter: ${data.filtru}`;
+    }
+    if (data.aerator) {
+        infos[2].innerText += ` | Aerator: ${data.aerator}`;
+    }
+
+
+}
+
 
     // Cream cele 3 grafice pentru Tank 1 cu scari fixe
     const chartTemp = createChart(ctxTemp, 'Temperatura', 'rgba(255, 99, 132, 1)', 20, 30, 2);      // 20-30°C
