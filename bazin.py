@@ -2,10 +2,10 @@ import time
 import random
 import json
 import paho.mqtt.client as mqtt
-import config  # Importam setarile
+import config  # Importam setarile din config.py
 
 
-# --- GENERARE IDENTITATE ---
+# --- GENERARE IDENTITATE UNICA ---
 def genereaza_id_bazin():
     return str(random.randint(1000, 9999))
 
@@ -15,18 +15,18 @@ TOPIC_DATE = f"{config.TOPIC_BASE}/{TANK_ID}/senzori"
 TOPIC_COMENZI = f"{config.TOPIC_BASE}/{TANK_ID}/comenzi"
 
 print(f"\n{'=' * 40}")
-print(f"   🌊 BAZIN INITIALIZAT")
+print(f"   🌊 BAZIN INITIALIZAT (Calibrat)")
 print(f"   🆔 COD UNIC: >> {TANK_ID} <<")
-print(f"   (Noteaza acest cod pentru site!)")
+print(f"   (Foloseste acest cod in Interfata!)")
 print(f"{'=' * 40}\n")
 
-# --- PARAMETRI INITIALI ---
-temp_apa = 22.5  # Pornim de la o temperatura ok
-ph = 7.0
-oxigen = 7.5
+# --- PARAMETRI INITIALI (Ideali) ---
+temp_apa = 23.0
+ph = 7.2
+oxigen = 8.0  # Pornim cu oxigen perfect
 
-# Limite naturale (fizica)
-TEMP_CAMERA = 20.0  # Apa nu se raceste sub temperatura camerei
+# Limite fizice simulate
+TEMP_CAMERA = 21.0  # Temperatura sub care nu scade apa natural
 
 actuatori = {"incalzitor": False, "aerator": False, "filtru": False}
 
@@ -54,7 +54,7 @@ def on_message(client, userdata, msg):
         pass
 
 
-# --- MQTT SETUP ---
+# --- CONECTARE MQTT ---
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, f"Bazin_{TANK_ID}")
 client.on_connect = lambda c, u, f, rc: print(f"[SISTEM] Conectat la HiveMQ.")
 client.on_message = on_message
@@ -62,48 +62,52 @@ client.connect(config.MQTT_BROKER, config.MQTT_PORT)
 client.subscribe(TOPIC_COMENZI)
 client.loop_start()
 
-# --- BUCLA PRINCIPALA ---
+# --- BUCLA PRINCIPALA (SIMULARE FIZICA) ---
 try:
     while True:
-        # --- 1. FIZICA TEMPERATURA ---
+        # ---------------------------------------------------------
+        # 1. FIZICA TEMPERATURA (Reglata anterior)
+        # ---------------------------------------------------------
         if actuatori["incalzitor"]:
-            # Daca incalzim, creste vizibil
-            temp_apa += random.uniform(0.2, 0.5)
+            temp_apa += random.uniform(0.1, 0.3)  # Incalzire
         else:
-            # Daca NU incalzim, tinde spre temperatura camerei (20 grade)
+            # Racire naturala spre temperatura camerei
             if temp_apa > TEMP_CAMERA:
-                # Scade INCET (0.05 - 0.1 grade)
-                temp_apa -= random.uniform(0.05, 0.1)
+                temp_apa -= random.uniform(0.02, 0.08)  # Racire FOARTE lenta
             else:
-                # Daca e deja rece, fluctueaza foarte putin in jurul lui 20
-                temp_apa += random.uniform(-0.05, 0.05)
+                # Fluctuatie minora la echilibru
+                temp_apa += random.uniform(-0.02, 0.02)
 
-        # --- 2. FIZICA OXIGEN ---
+        # ---------------------------------------------------------
+        # 2. FIZICA OXIGEN (AICI AM FACUT SCHIMBARILE MARI)
+        # ---------------------------------------------------------
         if actuatori["aerator"]:
-            # Creste rapid cand pornim aeratorul
-            oxigen += random.uniform(0.3, 0.6)
+            # Cand primesti comanda, oxigenul creste VIZIBIL
+            oxigen += random.uniform(0.4, 0.8)
         else:
-            # Scade lent (pestii respira)
-            oxigen -= random.uniform(0.05, 0.15)
+            # Cand e oprit, scade FOARTE LENT (consumul pestilor)
+            # Inainte scadea cu 0.2, acum scade cu maxim 0.08
+            oxigen -= random.uniform(0.01, 0.08)
 
-        # Limite hard (nu poate fi negativ sau peste saturatie)
-        oxigen = max(0.5, min(14.0, oxigen))  # Minim 0.5 ca sa nu moara pestii instant
+        # Limite realiste (nu trece de 15, nu scade sub 1 fara motiv extrem)
+        oxigen = max(0.5, min(15.0, oxigen))
 
-        # --- 3. FIZICA pH ---
+        # ---------------------------------------------------------
+        # 3. FIZICA pH
+        # ---------------------------------------------------------
         if actuatori["filtru"]:
-            # Filtrul stabilizeaza pH-ul spre 7.0 (neutru)
-            if ph > 7.1:
+            # Filtrul trage pH-ul spre 7.0 (neutru)
+            if ph > 7.05:
                 ph -= 0.05
-            elif ph < 6.9:
+            elif ph < 6.95:
                 ph += 0.05
         else:
-            # Fara filtru, pH-ul devine instabil (drift usor)
-            ph += random.uniform(-0.05, 0.05)
+            # Fara filtru, pH-ul are un drift usor (murdarire)
+            ph += random.uniform(-0.03, 0.03)
 
-        # Limite pH
-        ph = max(5.0, min(9.0, ph))
+        ph = max(5.5, min(8.5, ph))
 
-        # --- PREGATIRE DATE ---
+        # --- IMPACHETARE SI TRIMITERE ---
         payload = {
             "id_bazin": TANK_ID,
             "temperatura": round(temp_apa, 2),
@@ -115,7 +119,7 @@ try:
         print(f"[SENZOR {TANK_ID}] T:{payload['temperatura']} | O2:{payload['oxigen']} -> Cloud")
         client.publish(TOPIC_DATE, json.dumps(payload))
 
-        # Trimitem date la fiecare 3 secunde
+        # Pauza de 3 secunde intre citiri
         time.sleep(3)
 
 except KeyboardInterrupt:
