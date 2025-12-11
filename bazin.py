@@ -2,72 +2,121 @@ import time
 import random
 import json
 import paho.mqtt.client as mqtt
-
-# --- CONFIGURARE ---
-BROKER = "test.mosquitto.org"
-PORT = 1883
-TOPIC_DATE = "acvacultura/student/bazin1/senzori"
-TOPIC_COMENZI = "acvacultura/student/bazin1/comenzi"
-
-# Stare initiala actuator
-incalzitor_pornit = False
+import config  # Importam setarile
 
 
-# --- ACTUATOR (Ce face bazinul cand primeste comanda) ---
+# --- GENERARE IDENTITATE ---
+def genereaza_id_bazin():
+    return str(random.randint(1000, 9999))
+
+
+TANK_ID = genereaza_id_bazin()
+TOPIC_DATE = f"{config.TOPIC_BASE}/{TANK_ID}/senzori"
+TOPIC_COMENZI = f"{config.TOPIC_BASE}/{TANK_ID}/comenzi"
+
+print(f"\n{'=' * 40}")
+print(f"   🌊 BAZIN INITIALIZAT")
+print(f"   🆔 COD UNIC: >> {TANK_ID} <<")
+print(f"   (Noteaza acest cod pentru site!)")
+print(f"{'=' * 40}\n")
+
+# --- PARAMETRI INITIALI ---
+temp_apa = 22.5  # Pornim de la o temperatura ok
+ph = 7.0
+oxigen = 7.5
+
+# Limite naturale (fizica)
+TEMP_CAMERA = 20.0  # Apa nu se raceste sub temperatura camerei
+
+actuatori = {"incalzitor": False, "aerator": False, "filtru": False}
+
+
+# --- PROCESSARE COMENZI ---
 def on_message(client, userdata, msg):
-    global incalzitor_pornit  # Folosim variabila globala ca sa o putem modifica
-    comanda = msg.payload.decode()
-    print(f"\n[ACTUATOR] !!! Am primit comanda: {comanda}")
+    global actuatori
+    try:
+        cmd = msg.payload.decode()
+        print(f"[COMANDA] {cmd}")
 
-    if "START_INCALZITOR" in comanda:
-        incalzitor_pornit = True
-        print("           -> [HARDWARE] REZISTENTA PORNITA (Se incalzeste...)")
+        if "START_INCALZITOR" in cmd:
+            actuatori["incalzitor"] = True
+        elif "STOP_INCALZITOR" in cmd:
+            actuatori["incalzitor"] = False
+        elif "START_AERATOR" in cmd:
+            actuatori["aerator"] = True
+        elif "STOP_AERATOR" in cmd:
+            actuatori["aerator"] = False
+        elif "START_FILTRU" in cmd:
+            actuatori["filtru"] = True
+        elif "STOP_FILTRU" in cmd:
+            actuatori["filtru"] = False
+    except:
+        pass
 
-    elif "STOP_INCALZITOR" in comanda:
-        incalzitor_pornit = False
-        print("           -> [HARDWARE] REZISTENTA OPRITA (Racire naturala...)")
 
-    elif "START_AERATOR" in comanda:
-        print("           -> [HARDWARE] Aeratorul face bule! Ooo Ooo")
-
-
-# --- CONECTARE ---
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "Simulare_Bazin_Fizic")
-client.on_connect = lambda c, u, f, rc: print("[BAZIN] Conectat. Simulez fizica apei...")
+# --- MQTT SETUP ---
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, f"Bazin_{TANK_ID}")
+client.on_connect = lambda c, u, f, rc: print(f"[SISTEM] Conectat la HiveMQ.")
 client.on_message = on_message
-
-client.connect(BROKER, PORT)
+client.connect(config.MQTT_BROKER, config.MQTT_PORT)
 client.subscribe(TOPIC_COMENZI)
 client.loop_start()
 
-# --- SENZORI (Bucla infinita) ---
-temp_apa = 24.0
-
+# --- BUCLA PRINCIPALA ---
 try:
     while True:
-        # --- LOGICA DE SIMULARE FIZICA ---
-        if incalzitor_pornit == True:
-            # Daca incalzitorul e pornit, temperatura CRESTE
-            crestere = random.uniform(0.3, 0.6)
-            temp_apa += crestere
-            print(f"   [FIZICA] Incalzitor ON. Apa se incalzeste (+{crestere:.2f})")
+        # --- 1. FIZICA TEMPERATURA ---
+        if actuatori["incalzitor"]:
+            # Daca incalzim, creste vizibil
+            temp_apa += random.uniform(0.2, 0.5)
         else:
-            # Daca incalzitorul e oprit, temperatura SCADE (natural)
-            scadere = random.uniform(0.1, 0.3)
-            temp_apa -= scadere
-            print(f"   [FIZICA] Incalzitor OFF. Apa se raceste (-{scadere:.2f})")
+            # Daca NU incalzim, tinde spre temperatura camerei (20 grade)
+            if temp_apa > TEMP_CAMERA:
+                # Scade INCET (0.05 - 0.1 grade)
+                temp_apa -= random.uniform(0.05, 0.1)
+            else:
+                # Daca e deja rece, fluctueaza foarte putin in jurul lui 20
+                temp_apa += random.uniform(-0.05, 0.05)
 
-        # Impachetam si trimitem datele
-        pachet = {
+        # --- 2. FIZICA OXIGEN ---
+        if actuatori["aerator"]:
+            # Creste rapid cand pornim aeratorul
+            oxigen += random.uniform(0.3, 0.6)
+        else:
+            # Scade lent (pestii respira)
+            oxigen -= random.uniform(0.05, 0.15)
+
+        # Limite hard (nu poate fi negativ sau peste saturatie)
+        oxigen = max(0.5, min(14.0, oxigen))  # Minim 0.5 ca sa nu moara pestii instant
+
+        # --- 3. FIZICA pH ---
+        if actuatori["filtru"]:
+            # Filtrul stabilizeaza pH-ul spre 7.0 (neutru)
+            if ph > 7.1:
+                ph -= 0.05
+            elif ph < 6.9:
+                ph += 0.05
+        else:
+            # Fara filtru, pH-ul devine instabil (drift usor)
+            ph += random.uniform(-0.05, 0.05)
+
+        # Limite pH
+        ph = max(5.0, min(9.0, ph))
+
+        # --- PREGATIRE DATE ---
+        payload = {
+            "id_bazin": TANK_ID,
             "temperatura": round(temp_apa, 2),
-            "ph": 7.0,
-            "incalzitor": "PORNIT" if incalzitor_pornit else "OPRIT"
+            "ph": round(ph, 2),
+            "oxigen": round(oxigen, 2),
+            "status_actuatori": {k: ("PORNIT" if v else "OPRIT") for k, v in actuatori.items()}
         }
 
-        print(f"[SENZOR] Trimit Temp: {pachet['temperatura']} C")
-        client.publish(TOPIC_DATE, json.dumps(pachet))
+        print(f"[SENZOR {TANK_ID}] T:{payload['temperatura']} | O2:{payload['oxigen']} -> Cloud")
+        client.publish(TOPIC_DATE, json.dumps(payload))
 
-        time.sleep(3)  # Pauza de 3 secunde
+        # Trimitem date la fiecare 3 secunde
+        time.sleep(3)
 
 except KeyboardInterrupt:
     client.loop_stop()

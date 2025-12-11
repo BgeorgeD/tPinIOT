@@ -1,0 +1,13 @@
+# Ignora fisierul cu parole
+config.py
+
+# Ignora mediul virtual (astea sunt uriase si nu se pun pe git)
+.venv/
+venv/
+
+# Ignora fisierele compilate de Python
+__pycache__/
+*.pyc
+
+# Ignora fisierele specifice PyCharm (setarile tale locale)
+.idea/

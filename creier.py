@@ -1,54 +1,82 @@
 import json
+import time
 import paho.mqtt.client as mqtt
-import os
+from neo4j import GraphDatabase
+import config  # Importam setarile
 
-# --- CONFIGURARE ---
-BROKER = "test.mosquitto.org"
-PORT = 1883
-TOPIC_DATE = "acvacultura/student/bazin1/senzori"
-TOPIC_COMENZI = "acvacultura/student/bazin1/comenzi"
+# Asculta toate bazinele
+TOPIC_LISTEN = f"{config.TOPIC_BASE}/+/senzori"
 
-LIMITA_MINIMA = 22.0  # Prea frig
-LIMITA_MAXIMA = 24.0  # Destul de cald, opreste incalzirea
-
-FISIER_STATUS = "status_bazin.json"
+driver = None
 
 
-# --- LOGICA (Ce gandeste serverul) ---
+def init_neo4j():
+    global driver
+    try:
+        driver = GraphDatabase.driver(
+            config.NEO4J_URI,
+            auth=(config.NEO4J_USER, config.NEO4J_PASSWORD)
+        )
+        print("🟢 [NEO4J] Conectat la Cloud Database.")
+    except Exception as e:
+        print(f"❌ [NEO4J] EROARE: {e}")
+
+
+def save_reading(tx, payload):
+    tank_id = payload.pop("id_bazin")
+    timestamp = int(time.time() * 1000)
+
+    # 1. Asigura ca exista Bazinul
+    tx.run("MERGE (t:Tank {id: $tank_id})", tank_id=tank_id)
+
+    # 2. Creeaza Citirea NOUA
+    query_insert = """
+    MATCH (t:Tank {id: $tank_id})
+    CREATE (r:Reading {
+        temperatura: $temp, ph: $ph, oxigen: $oxigen, timestamp: $timestamp,
+        incalzitor: $heat, aerator: $air, filtru: $filt
+    })
+    CREATE (t)-[:HAS_READING]->(r)
+    """
+
+    # Extragem statusurile
+    stats = payload.get("status_actuatori", {})
+
+    tx.run(query_insert, tank_id=tank_id, temp=payload["temperatura"],
+           ph=payload["ph"], oxigen=payload["oxigen"], timestamp=timestamp,
+           heat=stats.get("incalzitor", "N/A"),
+           air=stats.get("aerator", "N/A"),
+           filt=stats.get("filtru", "N/A"))
+
+    # 3. CURATENIE AUTOMATA (Sterge datele vechi)
+    # Pastram doar ultimele 200 de citiri. Stergem restul.
+    query_cleanup = """
+    MATCH (t:Tank {id: $tank_id})-[:HAS_READING]->(r:Reading)
+    WITH r ORDER BY r.timestamp DESC SKIP 200
+    DETACH DELETE r
+    """
+    tx.run(query_cleanup, tank_id=tank_id)
+
+
 def on_message(client, userdata, msg):
     try:
-        continut = msg.payload.decode()
-        date = json.loads(continut)
-        temp_curenta = date['temperatura']
+        payload = json.loads(msg.payload.decode())
+        tank_id = payload.get("id_bazin", "Unknown")
+        print(f"[MQTT] Primit de la {tank_id}. Salvez...")
 
-        # Salvam pe disc pentru site
-        with open(FISIER_STATUS, "w") as f:
-            json.dump(date, f)
-
-        print(f"[CREIER] Temperatura: {temp_curenta} C")
-
-        # --- TERMOSTAT AUTOMAT ---
-        if temp_curenta < LIMITA_MINIMA:
-            print("         [ALERTA] E prea frig! -> Trimit START_INCALZITOR")
-            client.publish(TOPIC_COMENZI, "START_INCALZITOR")
-
-        elif temp_curenta > LIMITA_MAXIMA:
-            print("         [OK] Temperatura optima atinsa. -> Trimit STOP_INCALZITOR")
-            client.publish(TOPIC_COMENZI, "STOP_INCALZITOR")
-
-        else:
-            print("         [INFO] Temperatura e in intervalul corect.")
-
-        print("-" * 30)
+        if driver:
+            with driver.session() as session:
+                session.execute_write(save_reading, payload)
+                print("💾 [DB] Salvat cu succes!")
     except Exception as e:
         print(f"Eroare procesare: {e}")
 
 
-# --- CONECTARE ---
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "Simulare_Server_Central")
-client.on_connect = lambda c, u, f, rc: print("[SERVER] Conectat. Monitorizez temperatura...")
+# --- MAIN ---
+init_neo4j()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "Creier_Cloud_Writer")
+client.on_connect = lambda c, u, f, rc: print("🟢 [MQTT] Conectat la Broker.")
 client.on_message = on_message
-
-client.connect(BROKER, PORT)
-client.subscribe(TOPIC_DATE)
+client.connect(config.MQTT_BROKER, config.MQTT_PORT)
+client.subscribe(TOPIC_LISTEN)
 client.loop_forever()

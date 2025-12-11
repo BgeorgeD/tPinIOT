@@ -1,173 +1,237 @@
+/* =========================================
+   1. STILURI GENERALE (Reset & Body)
+   ========================================= */
 * {
-    margin: 0 ;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  font-family: "Lato", sans-serif;
+    font-family: "Lato", sans-serif;
+    background-color: #f4f4f9; /* Fundal gri deschis, profesional */
+    color: #333;
+    overflow-x: hidden; /* Previne scroll orizontal nedorit */
 }
 
 h1 {
-    background-color: #b1c9bb;
-    padding: 25px;
     text-align: center;
-    box-shadow: 0 2px 4px #008080;
-    color:white
-}
-
-/* Container for sidenav */
-#mySidenav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 0;           /* stays invisible */
-}
-
-/* The sliding tall tab */
-#mySidenav a {
-  position: absolute;
-  left: -80px;        /* hidden initially */
-  top: 0;
-  width: 120px;
-  height: 100%;
-  padding: 15px;
-  font-size: 20px;
-  color: white;
-  background-color: #b1c9bb;
-  text-decoration: none;
-  border-radius: 0 5px 5px 0;
-  transition: 0.3s;
-  box-shadow: 0 2px 8px 1px #333;
-}
-
-#mySidenav a:hover {
-  left: 0;  /* slides in */
-}
-
-#about {
-  top: 20px;
-}
-
-/* Container for big cards */
-.card-container {
-  max-width: 85%;
-  margin: 40px auto;
-  margin-left: 140px;   /* leave room for sidenav */
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Big teal cards */
-.card {
-  background-color: #008080;
-  min-height: 200px;
-  color: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  text-align: center;
-  font-size: 1.2rem;
-}
-
-/* Container for inner cards */
-.inner-card-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-/* Inner cards */
-.inner-card {
-  background-color: #20b2aa;
-  color: white;
-  flex: 1 1 30%;
-  min-width: 180px;
-  height: 200px;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-  text-align: center;
-}
-
-/* Small info bar inside each inner card */
-.inner-info-bar {
-    background-color: #d3d3d3; /* grey */
-    color: #333;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    margin-bottom: 8px;
-    text-align: center;
-}
-
-/* Charts inside inner cards */
-.inner-card canvas {
-    width: 100% !important;
-    height: calc(100% - 50px) !important;  /* leave room for info bar + heading */
-    object-fit: contain;
-}
-
-.controls-container {
-    display: flex;
-    justify-content: flex-start;
     margin-top: 20px;
-    margin-bottom: 40px;
+    color: #008080; /* Teal - Culoarea principala */
+}
+
+h2 {
+    color: #444;
+    border-bottom: 2px solid #008080;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+/* =========================================
+   2. ECRANUL DE LOGIN (NOU!)
+   ========================================= */
+#login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 128, 128, 0.95); /* Teal Opac */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Asigura ca e peste tot */
+}
+
+#login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    width: 350px;
+}
+
+#tank-input {
+    font-size: 24px;
+    padding: 10px;
+    width: 150px;
+    text-align: center;
+    border: 2px solid #008080;
+    border-radius: 8px;
+    margin: 20px 0;
+    letter-spacing: 3px;
+    font-weight: bold;
+    outline: none;
+}
+
+#tank-input:focus {
+    border-color: #004d40;
+    box-shadow: 0 0 5px rgba(0, 128, 128, 0.5);
+}
+
+#connect-btn {
+    background: #008080;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.3s;
+}
+
+#connect-btn:hover {
+    background: #006666;
+}
+
+/* Clasa utilitara pentru ascunderea elementelor */
+.hidden {
+    display: none !important;
+}
+
+/* =========================================
+   3. CARDURI SI CONTAINER (Design Roberto)
+   ========================================= */
+.card-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    width: 100%;
+    max-width: 500px; /* Limitam latimea maxima */
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px); /* Efect mic de ridicare */
+}
+
+/* Containerul din interiorul cardului mare */
+.inner-card-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Cardurile mici (cele cu grafice) */
+.inner-card {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    height: 180px; /* Inaltime fixa pentru grafic */
+}
+
+/* Bara de informatii (Textul de sus: Temp 24C) */
+.inner-info-bar {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+canvas {
+    max-height: 130px; /* Asigura ca graficul nu iese din card */
+}
+
+/* =========================================
+   4. ETICHETE STATUS (NOU - pt. Incalzitor/Aerator)
+   ========================================= */
+.status-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bg-ok {
+    background-color: #20b2aa; /* Turcoaz (OPRIT/OK) */
+}
+
+.bg-alert {
+    background-color: #dc3545; /* Rosu (PORNIT/Atentie) */
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* =========================================
+   5. BUTOANE DE CONTROL (Design Roberto adaptat)
+   ========================================= */
+.controls-container {
+    margin-top: 20px;
 }
 
 .controls-btn {
-    padding: 18px 40px;
-    font-size: 1.3rem;
-    font-weight: bold;
-    background-color: white;
-    color: #008080 ;
-    border:solid 4px #008080 ;
-    border-radius: 10px;
+    background-color: #008080;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: 0.2s;
-    width:25%;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: background 0.2s;
+    width: 100%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .controls-btn:hover {
-    background-color: white;
-    transform: scale(1.03);
-    border:solid 4px white;
-    background-color: #008080;
-    color: white;
+    background-color: #006666;
 }
 
-
-
-/* RESPONSIVE */
-@media (max-width: 768px) {
-    .inner-card {
-        flex: 1 1 45%;
-        height: 180px;
-    }
+.controls-btn:active {
+    transform: scale(0.98);
 }
 
-@media (max-width: 500px) {
-    .controls-container {
-        margin-left: auto;
-        margin-right: auto;
-        max-width: 95%;
-    }
+/* =========================================
+   6. SIDENAV (Meniul Lateral)
+   ========================================= */
+.sidenav {
+    height: 100%;
+    width: 0; /* Initial ascuns, poate fi activat cu JS daca vrei */
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #111;
+    overflow-x: hidden;
+    padding-top: 60px;
+    transition: 0.5s;
 }
 
+.sidenav a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+}
 
-@media (max-width: 500px) {
-    .inner-card {
-        flex: 1 1 90%;
-        height: 160px;
-    }
-    .card-container {
-        margin-left: auto;
-        margin-right: auto;
-        max-width: 95%;
-    }
+.sidenav a:hover {
+    color: #f1f1f1;
 }

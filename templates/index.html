@@ -1,211 +1,248 @@
 <!DOCTYPE html>
-<html>
+<html lang="ro">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WaterSight - Cloud IoT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS ADAUGAT PENTRU LOGIN (Peste stilul existent) */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 128, 128, 0.95); /* Teal opac */
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; color: white;
+        }
+        #login-box {
+            background: white; padding: 40px; border-radius: 15px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #333; width: 300px;
+        }
+        #tank-input {
+            font-size: 24px; padding: 10px; width: 150px; text-align: center;
+            border: 2px solid #008080; border-radius: 8px; margin: 20px 0;
+            letter-spacing: 3px; font-weight: bold;
+        }
+        #connect-btn {
+            background: #008080; color: white; border: none; padding: 12px 30px;
+            font-size: 18px; border-radius: 6px; cursor: pointer; width: 100%;
+        }
+        #connect-btn:hover { background: #006666; }
+        .hidden { display: none !important; }
+
+        /* Ajustari mici la carduri */
+        .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; color: white; display: inline-block; margin-top: 5px; }
+        .bg-ok { background-color: #20b2aa; }
+        .bg-alert { background-color: #dc3545; }
+    </style>
 </head>
 <body>
 
-<!-- SIDENAV -->
-<div id="mySidenav" class="sidenav">
-  <a href="#" id="about">Menu</a>
+<div id="login-screen">
+    <div id="login-box">
+        <h1>🌊 WaterSight</h1>
+        <p>Introduceți codul bazinului:</p>
+        <input type="text" id="tank-input" placeholder="0000" maxlength="4">
+        <button id="connect-btn" onclick="connectToTank()">Conectare la Cloud</button>
+        <p id="error-msg" style="color: red; margin-top: 10px; font-size: 14px; min-height: 20px;"></p>
+    </div>
 </div>
 
-<!-- HEADER -->
-<h1>WaterSight</h1>
+<div id="main-interface" class="hidden">
 
-<!-- CARD CONTAINER -->
-<div class="card-container">
-
-  <!-- CARD ONE -->
-  <div class="card">
-    <h2>Tank 1</h2>
-    <p>First card description...</p>
-
-    <div class="inner-card-container">
-      <div class="inner-card">
-        <div class="inner-info-bar">Temperature: 24°C</div>
-        <h3>Temperature Graph</h3>
-        <canvas id="graph1"></canvas>
-      </div>
-      <div class="inner-card">
-        <div class="inner-info-bar">Oxygen: 7.8 mg/L</div>
-        <h3>Oxygen Graph</h3>
-        <canvas id="graph2"></canvas>
-      </div>
-      <div class="inner-card">
-        <div class="inner-info-bar">pH: 7.2</div>
-        <h3>pH Graph</h3>
-        <canvas id="graph3"></canvas>
-      </div>
+    <div id="mySidenav" class="sidenav">
+      <a href="#">Menu</a>
+      <a href="#" onclick="logout()">Deconectare</a>
     </div>
-  </div>
 
-  <!-- CARD TWO -->
-  <div class="card">
-    <h2>Tank 2</h2>
-    <p>Second card description...</p>
+    <h1>WaterSight <span id="display-tank-id" style="font-size: 0.6em; opacity: 0.8;"></span></h1>
 
-    <div class="inner-card-container">
-      <div class="inner-card">
-        <div class="inner-info-bar">Temperature: 23°C</div>
-        <h3>Temperature Graph</h3>
-        <canvas id="graph4"></canvas>
+    <div class="card-container">
+
+      <div class="card">
+        <h2>Monitorizare Live</h2>
+        <p>Date în timp real din Neo4j Cloud</p>
+
+        <div class="inner-card-container">
+          <div class="inner-card">
+            <div class="inner-info-bar">
+                Temp: <span id="temp-val">--</span>°C
+                <br>
+                <span id="heat-badge" class="status-badge bg-ok">Încălzitor: OPRIT</span>
+            </div>
+            <canvas id="graph1"></canvas>
+          </div>
+
+          <div class="inner-card">
+            <div class="inner-info-bar">
+                O2: <span id="oxigen-val">--</span> mg/L
+                <br>
+                <span id="air-badge" class="status-badge bg-ok">Aerator: OPRIT</span>
+            </div>
+            <canvas id="graph2"></canvas>
+          </div>
+
+          <div class="inner-card">
+            <div class="inner-info-bar">
+                pH: <span id="ph-val">--</span>
+                <br>
+                <span id="filt-badge" class="status-badge bg-ok">Filtru: OPRIT</span>
+            </div>
+            <canvas id="graph3"></canvas>
+          </div>
+        </div>
       </div>
-      <div class="inner-card">
-        <div class="inner-info-bar">Oxygen: 8.0 mg/L</div>
-        <h3>Oxygen Graph</h3>
-        <canvas id="graph5"></canvas>
+
+      <div class="card">
+        <h2>Panou de Control</h2>
+        <p>Acțiuni manuale via MQTT</p>
+
+        <div class="controls-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 400px; margin: 0 auto;">
+            <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">Start Aerator</button>
+            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_AERATOR')">Stop Aerator</button>
+
+            <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">Start Filtru</button>
+            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_FILTRU')">Stop Filtru</button>
+
+            <button class="controls-btn" onclick="trimiteComanda('START_INCALZITOR')">Start Încălzire</button>
+            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_INCALZITOR')">Stop Încălzire</button>
+        </div>
+
+        <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
+             <button class="controls-btn" style="background: #555;" onclick="alert('Funcția de limite automate va fi disponibilă în v2.0!')">
+               🔧 Ajustare Limite (Coming Soon)
+             </button>
+        </div>
       </div>
-      <div class="inner-card">
-        <div class="inner-info-bar">pH: 7.3</div>
-        <h3>pH Graph</h3>
-        <canvas id="graph6"></canvas>
-      </div>
-    </div>
-  </div>
-    <!-- CONTROLS BUTTON INSIDE CARD CONTAINER -->
-  <div class="controls-container" style="gap: 20px;">
-      <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">
-          💨 Pornște Aerator
-      </button>
 
-      <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">
-          🔄 Pornește Filtru
-      </button>
-  </div>
+    </div> </div>
 
-</div> <!-- end of card-container -->
-
-</div>
-
-
-
-</body>
-
-<!-- CHART.JS DEMO LINE CHARTS -->
 <script>
-    // 1. Initializare Grafice GOALE
-    const ctxTemp = document.getElementById('graph1').getContext('2d');
-    const ctxOxigen = document.getElementById('graph2').getContext('2d');
-    const ctxPh = document.getElementById('graph3').getContext('2d');
+    // --- VARIABILE GLOBALE ---
+    let currentTankID = null;
+    let refreshInterval = null;
 
-    // Functie ajutatoare pentru configurarea graficelor
-    function createChart(ctx, label, color) {
+    // --- 1. CONFIGURARE GRAFICE (Chart.js) ---
+    function createChart(ctx, label, color, min, max) {
         return new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: [], // Timpul (axa X) va fi adaugat dinamic
-                datasets: [{
-                    label: label,
-                    data: [],
-                    borderColor: color,
-                    backgroundColor: color.replace('1)', '0.2)'),
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
+            data: { labels: [], datasets: [{ label: label, data: [], borderColor: color, backgroundColor: color.replace('1)', '0.2)'), fill: true, tension: 0.4 }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { x: { display: false } }, // Ascundem axa X sa fie curat
-                animation: { duration: 0 } // Oprim animatia ca sa nu "danseze" la fiecare secunda
-            }
-        });
-    }
-
-    // Cream cele 3 grafice pentru Tank 1
-    const chartTemp = createChart(ctxTemp, 'Temperatura', 'rgba(255, 99, 132, 1)');
-    const chartOxigen = createChart(ctxOxigen, 'Oxigen', 'rgba(54, 162, 235, 1)');
-    const chartPh = createChart(ctxPh, 'pH', 'rgba(75, 192, 192, 1)');
-
-    // 2. Functia care cere date de la Python (app.py)
-    async function fetchData() {
-        try {
-            const response = await fetch('/api/data');
-            const data = await response.json();
-
-            // Verificam daca avem date valide
-            if (data.temperatura !== undefined) {
-                updateDashboard(data);
-            }
-        } catch (error) {
-            console.error('Eroare la preluarea datelor:', error);
-        }
-    }
-
-    // --- FUNCTIA PENTRU BUTOANE ---
-    async function trimiteComanda(actiune) {
-        // Facem butonul sa reactioneze vizual
-        alert("Trimit comanda: " + actiune);
-
-        try {
-            // Trimitem comanda catre serverul nostru Python (app.py)
-            const response = await fetch('/api/control', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+                scales: {
+                    x: { display: false },
+                    y: { min: min, max: max, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
                 },
-                body: JSON.stringify({ actiune: actiune })
+                animation: { duration: 0 }
+            }
+        });
+    }
+
+    const chartTemp = createChart(document.getElementById('graph1').getContext('2d'), 'Temp', 'rgba(255, 99, 132, 1)', 20, 30);
+    const chartOxigen = createChart(document.getElementById('graph2').getContext('2d'), 'Oxigen', 'rgba(54, 162, 235, 1)', 0, 15);
+    const chartPh = createChart(document.getElementById('graph3').getContext('2d'), 'pH', 'rgba(75, 192, 192, 1)', 5, 9);
+
+    // --- 2. LOGICA DE LOGIN ---
+    async function connectToTank() {
+        const code = document.getElementById('tank-input').value;
+        const btn = document.getElementById('connect-btn');
+        const err = document.getElementById('error-msg');
+
+        if(code.length < 4) { err.innerText = "Codul trebuie să aibă 4 cifre."; return; }
+
+        btn.innerText = "Verificare Cloud...";
+
+        try {
+            // Trimitem cererea la backend
+            const res = await fetch('/api/connect', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ tank_id: code })
             });
+            const data = await res.json();
 
-            const result = await response.json();
-            console.log("Raspuns server:", result);
+            if (data.status === 'success') {
+                // SUCCES
+                currentTankID = code;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-interface').classList.remove('hidden');
+                document.getElementById('display-tank-id').innerText = "#" + code;
 
-        } catch (error) {
-            console.error("Eroare la trimiterea comenzii:", error);
+                // Pornim actualizarea datelor
+                refreshInterval = setInterval(updateDashboard, 2000);
+            } else {
+                err.innerText = "Bazin negăsit sau neconectat.";
+                btn.innerText = "Conectare";
+            }
+        } catch (e) {
+            console.error(e);
+            err.innerText = "Eroare de rețea.";
+            btn.innerText = "Conectare";
         }
     }
 
-    // 3. Functia care actualizeaza ecranul
-    function updateDashboard(data) {
-        const now = new Date().toLocaleTimeString();
-
-        // --- Actualizare TEXTE (Cardul Tank 1) ---
-        // Cautam div-urile care contin textul si le schimbam
-        // Nota: Aceasta metoda cauta in inner-card-container primul element
-        const cards = document.querySelectorAll('.card')[0]; // Tank 1
-        const infos = cards.querySelectorAll('.inner-info-bar');
-
-        infos[0].innerText = `Temperature: ${data.temperatura}°C`;
-        infos[1].innerText = `Oxygen: ${data.oxigen} mg/L`;
-        infos[2].innerText = `pH: ${data.ph}`;
-
-        // --- Actualizare GRAFICE ---
-        addDataToChart(chartTemp, now, data.temperatura);
-        addDataToChart(chartOxigen, now, data.oxigen);
-        addDataToChart(chartPh, now, data.ph);
+    function logout() {
+        location.reload(); // Reincarca pagina pentru a reveni la login
     }
 
-    function addDataToChart(chart, label, data) {
-        // Adaugam date noi
-        chart.data.labels.push(label);
-        chart.data.datasets.forEach((dataset) => {
-            dataset.data.push(data);
-        });
+    // --- 3. ACTUALIZARE DATE (Polling) ---
+    async function updateDashboard() {
+        if (!currentTankID) return;
 
-        // Pastram doar ultimele 20 de puncte (sa nu se aglomereze)
+        try {
+            const res = await fetch(`/api/data?tank_id=${currentTankID}`);
+            const data = await res.json();
+
+            // Verificam daca am primit date valide
+            if(data.temperatura !== undefined) {
+                const now = new Date().toLocaleTimeString();
+
+                // Actualizare Texte
+                document.getElementById('temp-val').innerText = data.temperatura;
+                document.getElementById('oxigen-val').innerText = data.oxigen;
+                document.getElementById('ph-val').innerText = data.ph;
+
+                // Actualizare Statusuri (Badges)
+                updateBadge('heat-badge', 'Încălzitor', data.incalzitor);
+                updateBadge('air-badge', 'Aerator', data.aerator);
+                updateBadge('filt-badge', 'Filtru', data.filtru);
+
+                // Actualizare Grafice
+                addDataToChart(chartTemp, now, data.temperatura);
+                addDataToChart(chartOxigen, now, data.oxigen);
+                addDataToChart(chartPh, now, data.ph);
+            }
+        } catch (error) { console.error("Eroare update:", error); }
+    }
+
+    function updateBadge(id, label, status) {
+        const el = document.getElementById(id);
+        el.innerText = `${label}: ${status}`;
+        if(status === 'PORNIT') {
+            el.className = 'status-badge bg-alert'; // Rosu daca merge
+        } else {
+            el.className = 'status-badge bg-ok'; // Verde/Turcoaz daca sta
+        }
+    }
+
+    function addDataToChart(chart, label, val) {
+        chart.data.labels.push(label);
+        chart.data.datasets[0].data.push(val);
         if (chart.data.labels.length > 20) {
             chart.data.labels.shift();
-            chart.data.datasets.forEach((dataset) => {
-                dataset.data.shift();
-            });
+            chart.data.datasets[0].data.shift();
         }
         chart.update();
     }
 
-    // 4. Pornim ceasul! (Cere date la fiecare 2 secunde)
-    setInterval(fetchData, 2000);
-
-    // Initializam si graficele goale pentru Tank 2 (doar vizual, momentan)
-    // Poti repeta logica de mai sus si pentru Tank 2 cand vei avea date
-    for(let i=4; i<=6; i++){
-         const ctx = document.getElementById('graph'+i).getContext('2d');
-         createChart(ctx, 'Demo Tank 2', 'rgba(200, 200, 200, 1)');
+    // --- 4. COMENZI MQTT ---
+    async function trimiteComanda(actiune) {
+        if (!currentTankID) return;
+        await fetch('/api/control', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ tank_id: currentTankID, actiune: actiune })
+        });
+        // Nu dam alert ca sa fie fluid, dar poti vedea in Network tab
     }
-
 </script>
 
 </body>
