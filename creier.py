@@ -2,6 +2,7 @@ import json
 import time
 import paho.mqtt.client as mqtt
 from neo4j import GraphDatabase
+import uuid  # <--- 1. IMPORT NECESAR PENTRU ID UNIC
 import config  # Importam setarile
 
 # Asculta toate bazinele
@@ -48,7 +49,7 @@ def save_reading(tx, payload):
            air=stats.get("aerator", "N/A"),
            filt=stats.get("filtru", "N/A"))
 
-    # 3. CURATENIE AUTOMATA (Sterge datele vechi)
+    # 3. CURATENIE AUTOMATA (Sterge datele vechi pentru a mentine baza rapida)
     # Pastram doar ultimele 200 de citiri. Stergem restul.
     query_cleanup = """
     MATCH (t:Tank {id: $tank_id})-[:HAS_READING]->(r:Reading)
@@ -74,9 +75,15 @@ def on_message(client, userdata, msg):
 
 # --- MAIN ---
 init_neo4j()
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "Creier_Cloud_Writer")
-client.on_connect = lambda c, u, f, rc: print("🟢 [MQTT] Conectat la Broker.")
+
+# --- REPARATIE CONFLICT ---
+# Generam un ID unic (ex: Creier_Cloud_Writer_f4a2b1)
+unique_client_id = f"Creier_Cloud_Writer_{uuid.uuid4().hex[:6]}"
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, unique_client_id)
+client.on_connect = lambda c, u, f, rc: print(f"🟢 [MQTT] Conectat cu ID: {unique_client_id}")
 client.on_message = on_message
+
 client.connect(config.MQTT_BROKER, config.MQTT_PORT)
 client.subscribe(TOPIC_LISTEN)
 client.loop_forever()

@@ -1,22 +1,28 @@
 from flask import Flask, render_template, jsonify, request
 from neo4j import GraphDatabase
 import paho.mqtt.client as mqtt
+import uuid  # <--- IMPORT IMPORTANT (pentru ID unic)
 import config  # Importam setarile din config.py
 
 app = Flask(__name__)
 
 # --- 1. CONEXIUNI (Cloud & MQTT) ---
-# Ne conectam la Neo4j folosind datele din config.py
-# (Atentie: asigura-te ca in config.py ai pus 'neo4j+ssc://' daca esti pe retea restrictionata)
+
+# Conexiune Neo4j
 driver = GraphDatabase.driver(
     config.NEO4J_URI,
     auth=(config.NEO4J_USER, config.NEO4J_PASSWORD)
 )
 
-# Ne conectam la MQTT pentru a putea trimite comenzi
-mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "App_Web_Controller")
+# --- REPARATIE CONFLICT MQTT ---
+# Generam un ID unic (ex: App_Web_a1b2c3) ca sa nu existe conflicte cu colegul
+unique_client_id = f"App_Web_{uuid.uuid4().hex[:6]}"
+
+mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, unique_client_id)
 mqtt_client.connect(config.MQTT_BROKER, config.MQTT_PORT)
 mqtt_client.loop_start()
+
+print(f"[SYSTEM] Web App conectat la MQTT cu ID: {unique_client_id}")
 
 
 # --- 2. FUNCTII AJUTATOARE ---
@@ -92,8 +98,9 @@ def control():
 
 if __name__ == '__main__':
     try:
-        # Rulam serverul pe portul 5000
-        app.run(debug=True, port=5000)
+        # ATENTIE: use_reloader=False este CRITIC pentru MQTT in Flask
+        # Previne pornirea a doua instante si dublarea conexiunii
+        app.run(debug=True, port=5000, use_reloader=False)
     finally:
         # Inchidem conexiunile curat la oprire
         driver.close()
