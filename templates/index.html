@@ -31,12 +31,15 @@
 
         /* Ajustari mici la carduri */
         .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; color: white; display: inline-block; margin-top: 5px; }
-        .bg-ok { background-color: #20b2aa; }
+        .bg-ok { background-color: #008080; }
         .bg-alert { background-color: #dc3545; }
     </style>
 </head>
 <body>
 
+<!-- =========================
+     LOGIN SCREEN
+     ========================= -->
 <div id="login-screen">
     <div id="login-box">
         <h1>🌊 WaterSight</h1>
@@ -47,96 +50,276 @@
     </div>
 </div>
 
+<!-- =========================
+     MAIN INTERFACE
+     ========================= -->
 <div id="main-interface" class="hidden">
 
+    <!-- SIDENAV -->
     <div id="mySidenav" class="sidenav">
-      <a href="#">Menu</a>
-      <a href="#" onclick="logout()">Deconectare</a>
+        <a href="#">Menu</a>
+        <a href="#" onclick="logout()">Deconectare</a>
     </div>
 
-    <h1>WaterSight <span id="display-tank-id" style="font-size: 0.6em; opacity: 0.8;"></span></h1>
+    <!-- HEADER -->
+    <h1 class="site-header">
+        WaterSight
+        <span id="display-tank-id" style="font-size: 0.6em; opacity: 0.8;"></span>
+    </h1>
 
-    <div class="card-container">
 
-      <div class="card">
-        <h2>Monitorizare Live</h2>
-        <p>Date în timp real din Neo4j Cloud</p>
+<!-- ========================= 
+     CARD CONTAINER
+     ========================= -->
+<div class="dashboard-layout">
 
-        <div class="inner-card-container">
-          <div class="inner-card">
-            <div class="inner-info-bar">
-                Temp: <span id="temp-val">--</span>°C
-                <br>
-                <span id="heat-badge" class="status-badge bg-ok">Încălzitor: OPRIT</span>
+    <!-- =========================
+         LEFT COLUMN – MONITORIZARE LIVE
+         ========================= -->
+    <div class="left-column">
+
+        <div class="card tank-card">
+
+            <!-- Header-style title (old design feel) -->
+            <div class="tank-header">
+                <h2>Monitorizare Live</h2>
+                <span>Date în timp real din Neo4j Cloud</span>
             </div>
-            <canvas id="graph1"></canvas>
-          </div>
 
-          <div class="inner-card">
-            <div class="inner-info-bar">
-                O2: <span id="oxigen-val">--</span> mg/L
-                <br>
-                <span id="air-badge" class="status-badge bg-ok">Aerator: OPRIT</span>
+            <div class="inner-card-container">
+
+                <div class="inner-card tank-inner">
+                    <div class="tank-info" id="temp-badge">
+                        Temp: <span id="temp-val">--</span>°C
+                    </div>
+
+                    <div id="heat-badge" class="tank-badge bg-ok">
+                        Încălzitor: OPRIT
+                    </div>
+                    <canvas id="graph1"></canvas>
+                </div>
+
+                <div class="inner-card tank-inner">
+                    <div class="tank-info" id="ox-badge">
+                        O2: <span id="oxigen-val">--</span> mg/L
+                    </div>
+                    <div id="air-badge" class="tank-badge bg-ok">
+                        Aerator: OPRIT
+                    </div>
+                    <canvas id="graph2"></canvas>
+                </div>
+
+                <div class="inner-card tank-inner">
+                    <div class="tank-info" id="ph-badge">
+                        pH: <span id="ph-val">--</span>
+                    </div>
+
+                    <div id="filt-badge" class="tank-badge bg-ok">
+                        Filtru: OPRIT
+                    </div>
+                    <canvas id="graph3"></canvas>
+                </div>
+
             </div>
-            <canvas id="graph2"></canvas>
-          </div>
+        </div>
 
-          <div class="inner-card">
-            <div class="inner-info-bar">
-                pH: <span id="ph-val">--</span>
-                <br>
-                <span id="filt-badge" class="status-badge bg-ok">Filtru: OPRIT</span>
+    </div>
+
+    <!-- =========================
+         RIGHT COLUMN – CONTROL PANEL
+         ========================= -->
+    <div class="right-column">
+
+        <div class="card">
+
+            <h2>Control Panel</h2>
+
+            <!-- BUTTON SELECTOR -->
+            <div class="control-selector">
+                <button onclick="toggleControlCard('manual-card')">
+                    Manual Controls
+                </button>
+                <button onclick="toggleControlCard('limits-card')">
+                    Ajustare Limite
+                </button>
+                <button onclick="toggleControlCard('switch-card')">
+                    Switch Tank
+                </button>
             </div>
-            <canvas id="graph3"></canvas>
-          </div>
+
+            <!-- MANUAL CONTROLS -->
+            <div id="manual-card" class="control-card collapsed">
+                <h3>Manual Controls</h3>
+
+                <div class="controls-container">
+                    <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">
+                        Start Aerator
+                    </button>
+                    <button class="controls-btn" onclick="trimiteComanda('STOP_AERATOR')">
+                        Stop Aerator
+                    </button>
+
+                    <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">
+                        Start Filtru
+                    </button>
+                    <button class="controls-btn" onclick="trimiteComanda('STOP_FILTRU')">
+                        Stop Filtru
+                    </button>
+
+                    <button class="controls-btn" onclick="trimiteComanda('START_INCALZITOR')">
+                        Start Încălzire
+                    </button>
+                    <button class="controls-btn" onclick="trimiteComanda('STOP_INCALZITOR')">
+                        Stop Încălzire
+                    </button>
+                </div>
+            </div>
+
+            <!-- LIMITS -->
+            <div id="limits-card" class="control-card collapsed">
+                <h3>Ajustare Limite</h3>
+
+                <div class="limits-wrapper">
+                    <div class="limit-box">
+                        <strong>Temperatură (°C)</strong><br>
+                        Min: <input id="temp-min" type="number" value="20">
+                        Max: <input id="temp-max" type="number" value="30">
+                    </div>
+
+                    <div class="limit-box">
+                        <strong>Oxigen (mg/L)</strong><br>
+                        Min: <input id="ox-min" type="number" value="5">
+                        Max: <input id="ox-max" type="number" value="10">
+                    </div>
+
+                    <div class="limit-box">
+                        <strong>pH</strong><br>
+                        Min: <input id="ph-min" type="number" value="6.5" step="0.1">
+                        Max: <input id="ph-max" type="number" value="8" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- SWITCH TANK -->
+            <div id="switch-card" class="control-card collapsed login-style-card">
+                <h3>Switch Tank</h3>
+                <input id="switch-tank-input" type="text" placeholder="0000" maxlength="4">
+                <button onclick="switchTank()">Conectare</button>
+
+            </div>
+
         </div>
-      </div>
 
-      <div class="card">
-        <h2>Panou de Control</h2>
-        <p>Acțiuni manuale via MQTT</p>
+    </div>
 
-        <div class="controls-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 400px; margin: 0 auto;">
-            <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">Start Aerator</button>
-            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_AERATOR')">Stop Aerator</button>
+</div>
 
-            <button class="controls-btn" onclick="trimiteComanda('START_FILTRU')">Start Filtru</button>
-            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_FILTRU')">Stop Filtru</button>
 
-            <button class="controls-btn" onclick="trimiteComanda('START_INCALZITOR')">Start Încălzire</button>
-            <button class="controls-btn" style="background:#dc3545" onclick="trimiteComanda('STOP_INCALZITOR')">Stop Încălzire</button>
-        </div>
-
-        <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
-             <button class="controls-btn" style="background: #555;" onclick="alert('Funcția de limite automate va fi disponibilă în v2.0!')">
-               🔧 Ajustare Limite (Coming Soon)
-             </button>
-        </div>
-      </div>
-
-    </div> </div>
 
 <script>
+
+    function toggleControlCard(id) {
+    const card = document.getElementById(id);
+    card.classList.toggle('collapsed');
+}
+
+
+
     // --- VARIABILE GLOBALE ---
     let currentTankID = null;
     let refreshInterval = null;
 
-    // --- 1. CONFIGURARE GRAFICE (Chart.js) ---
-    function createChart(ctx, label, color, min, max) {
-        return new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: label, data: [], borderColor: color, backgroundColor: color.replace('1)', '0.2)'), fill: true, tension: 0.4 }] },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { display: false },
-                    y: { min: min, max: max, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
-                },
-                animation: { duration: 0 }
-            }
-        });
+
+    function getLimits() {
+    return {
+        temp: {
+            min: Number(document.getElementById('temp-min')?.value),
+            max: Number(document.getElementById('temp-max')?.value)
+        },
+        ox: {
+            min: Number(document.getElementById('ox-min')?.value),
+            max: Number(document.getElementById('ox-max')?.value)
+        },
+        ph: {
+            min: Number(document.getElementById('ph-min')?.value),
+            max: Number(document.getElementById('ph-max')?.value)
+        }
+    };
+}
+
+
+    function applyAlertStyles(badgeId, value, min, max) {
+    const badge = document.getElementById(badgeId);
+    if (!badge || min == null || max == null) return;
+
+    const range = max - min;
+    const warningZone = range * 0.1; // 10% near limits
+
+    badge.classList.remove('bg-ok', 'bg-alert');
+
+    if (value < min || value > max) {
+        badge.classList.add('bg-alert');   // ❌ outside limits
+    } else if (value < min + warningZone || value > max - warningZone) {
+        badge.classList.add('bg-warning'); // ⚠️ near limits
+    } else {
+        badge.classList.add('bg-ok');      // ✅ normal
     }
+}
+
+
+
+    // --- 1. CONFIGURARE GRAFICE (Chart.js) ---
+   function createChart(ctx, label, color) {
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                backgroundColor: color.replace('1)', '0.15)'),
+                fill: true,
+                tension: 0.35,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    display: false
+                },
+                y: {
+                    beginAtZero: false,
+
+                    // 🔑 IMPORTANT PART
+                    grace: '15%',   // adds space above & below data
+                    ticks: {
+                        color: 'white',
+                        maxTicksLimit: 5,
+                        callback: (val) => Number(val).toFixed(2)
+                    },
+
+                    grid: {
+                        color: 'rgba(255,255,255,0.15)'
+                    }
+                }
+            }
+        }
+    });
+}
+
 
     const chartTemp = createChart(document.getElementById('graph1').getContext('2d'), 'Temp', 'rgba(255, 99, 132, 1)', 20, 30);
     const chartOxigen = createChart(document.getElementById('graph2').getContext('2d'), 'Oxigen', 'rgba(54, 162, 235, 1)', 0, 15);
@@ -180,6 +363,82 @@
         }
     }
 
+
+    async function switchTank() {
+    const input = document.getElementById('switch-tank-input');
+    const code = input.value;
+
+    if (code.length < 4) {
+        alert("Cod invalid");
+        return;
+    }
+
+    try {
+        // Stop old polling immediately
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+
+        // Reset UI before attempting connection
+        resetDashboardUI();
+
+        const res = await fetch('/api/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ tank_id: code })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            currentTankID = code;
+            document.getElementById('display-tank-id').innerText = "#" + code;
+
+            // Restart polling ONLY after success
+            refreshInterval = setInterval(updateDashboard, 2000);
+
+            input.value = "";
+        } else {
+            alert("Bazin negăsit sau fără date");
+            currentTankID = null;
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("Eroare de rețea");
+        currentTankID = null;
+    }
+}
+
+
+
+    function resetDashboardUI() {
+    // Clear text values
+    document.getElementById('temp-val').innerText = "--";
+    document.getElementById('oxigen-val').innerText = "--";
+    document.getElementById('ph-val').innerText = "--";
+
+    // Reset badges
+    resetBadge('heat-badge', 'Încălzitor');
+    resetBadge('air-badge', 'Aerator');
+    resetBadge('filt-badge', 'Filtru');
+
+    // Clear charts
+    [chartTemp, chartOxigen, chartPh].forEach(chart => {
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
+        chart.update();
+    });
+}
+
+function resetBadge(id, label) {
+    const el = document.getElementById(id);
+    el.innerText = `${label}: --`;
+    el.className = 'tank-badge bg-ok';
+}
+
+
     function logout() {
         location.reload(); // Reincarca pagina pentru a reveni la login
     }
@@ -210,6 +469,14 @@
                 addDataToChart(chartTemp, now, data.temperatura);
                 addDataToChart(chartOxigen, now, data.oxigen);
                 addDataToChart(chartPh, now, data.ph);
+
+                const limits = getLimits();
+
+                applyAlertStyles('temp-badge', data.temperatura, limits.temp.min, limits.temp.max);
+                applyAlertStyles('ox-badge', data.oxigen, limits.ox.min, limits.ox.max);
+                applyAlertStyles('ph-badge', data.ph, limits.ph.min, limits.ph.max);
+
+
             }
         } catch (error) { console.error("Eroare update:", error); }
     }
@@ -224,15 +491,39 @@
         }
     }
 
-    function addDataToChart(chart, label, val) {
-        chart.data.labels.push(label);
-        chart.data.datasets[0].data.push(val);
-        if (chart.data.labels.length > 20) {
-            chart.data.labels.shift();
-            chart.data.datasets[0].data.shift();
-        }
-        chart.update();
+    function addDataToChart(chart, label, value) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+
+    // Keep last N points
+    const MAX_POINTS = 20;
+    if (chart.data.labels.length > MAX_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
     }
+
+    // ---- DYNAMIC SCALE CONTROL ----
+    const data = chart.data.datasets[0].data;
+
+    let min = Math.min(...data);
+    let max = Math.max(...data);
+
+    // Minimum visible range (prevents exaggeration)
+    const MIN_RANGE = 2;   // adjust per sensor if needed
+
+    if (max - min < MIN_RANGE) {
+        const mid = (max + min) / 2;
+        min = mid - MIN_RANGE / 2;
+        max = mid + MIN_RANGE / 2;
+    }
+
+    // Padding so line never touches edges
+    const padding = (max - min) * 0.15;
+    chart.options.scales.y.min = min - padding;
+    chart.options.scales.y.max = max + padding;
+
+    chart.update('none');
+}
 
     // --- 4. COMENZI MQTT ---
     async function trimiteComanda(actiune) {
