@@ -147,6 +147,15 @@
                 </button>
             </div>
 
+            <!-- =========================
+            EVENT LOG
+            ========================= -->
+            <div class="card event-log-card">
+                <h2>Event Log</h2>
+                <ul id="event-log"></ul>
+            </div>
+
+
             <!-- MANUAL CONTROLS -->
             <div id="manual-card" class="control-card collapsed">
                 <h3>Manual Controls</h3>
@@ -182,20 +191,20 @@
                 <div class="limits-wrapper">
                     <div class="limit-box">
                         <strong>Temperatură (°C)</strong><br>
-                        Min: <input id="temp-min" type="number" value="20">
-                        Max: <input id="temp-max" type="number" value="30">
+                        Min: <input id="temp-min" type="number" value="20" onchange="saveLimits()">
+                        Max: <input id="temp-max" type="number" value="30" onchange="saveLimits()">
                     </div>
 
                     <div class="limit-box">
                         <strong>Oxigen (mg/L)</strong><br>
-                        Min: <input id="ox-min" type="number" value="5">
-                        Max: <input id="ox-max" type="number" value="10">
+                        Min: <input id="ox-min" type="number" value="5" onchange="saveLimits()">
+                        Max: <input id="ox-max" type="number" value="10" onchange="saveLimits()">
                     </div>
 
                     <div class="limit-box">
                         <strong>pH</strong><br>
-                        Min: <input id="ph-min" type="number" value="6.5" step="0.1">
-                        Max: <input id="ph-max" type="number" value="8" step="0.1">
+                        Min: <input id="ph-min" type="number" value="6.5" step="0.1" onchange="saveLimits()">
+                        Max: <input id="ph-max" type="number" value="8" step="0.1" onchange="saveLimits()">
                     </div>
                 </div>
             </div>
@@ -231,6 +240,37 @@
     let refreshInterval = null;
 
 
+    function saveLimits() {
+        localStorage.setItem('tankLimits', JSON.stringify(getLimits()));
+    }
+
+    function loadLimits() {
+        const saved = localStorage.getItem('tankLimits');
+        if (!saved) return;
+
+        const limits = JSON.parse(saved);
+
+        document.getElementById('temp-min').value = limits.temp.min;
+        document.getElementById('temp-max').value = limits.temp.max;
+
+        document.getElementById('ox-min').value = limits.ox.min;
+        document.getElementById('ox-max').value = limits.ox.max;
+
+        document.getElementById('ph-min').value = limits.ph.min;
+        document.getElementById('ph-max').value = limits.ph.max;
+    }
+
+
+
+    // --- EVENT LOG STATE ---
+    const lastEventState = {
+    temp: null,
+    ox: null,
+    ph: null
+};
+
+
+
     function getLimits() {
     return {
         temp: {
@@ -249,41 +289,83 @@
 }
 
 
-    function applyAlertStyles(badgeId, value, min, max) {
+    function applyAlertStyles(badgeId, value, min, max, typeKey, label) {
     const badge = document.getElementById(badgeId);
     if (!badge || min == null || max == null) return;
 
     const range = max - min;
-    const warningZone = range * 0.1; // 10% near limits
+    const warningZone = range * 0.1;
 
-    badge.classList.remove('bg-ok', 'bg-alert');
+    let state = 'ok';
 
     if (value < min || value > max) {
-        badge.classList.add('bg-alert');   // ❌ outside limits
+        state = 'alert';
     } else if (value < min + warningZone || value > max - warningZone) {
-        badge.classList.add('bg-warning'); // ⚠️ near limits
-    } else {
-        badge.classList.add('bg-ok');      // ✅ normal
+        state = 'warning';
+    }
+
+    badge.classList.remove('bg-ok', 'bg-warning', 'bg-alert');
+    badge.classList.add(`bg-${state}`);
+
+    // 🔑 LOG ONLY ON STATE CHANGE
+    if (lastEventState[typeKey] !== state) {
+        if (state !== 'ok') {
+            logEvent(label, state, value);
+        }
+        lastEventState[typeKey] = state;
     }
 }
 
 
 
+
     // --- 1. CONFIGURARE GRAFICE (Chart.js) ---
-   function createChart(ctx, label, color) {
+  function createChart(ctx, label, color) {
     return new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: color,
-                backgroundColor: color.replace('1)', '0.15)'),
-                fill: true,
-                tension: 0.35,
-                pointRadius: 0
-            }]
+            datasets: [
+                {
+                    label: label,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color.replace('1)', '0.12)'),
+                    fill: 'start',
+
+                    borderWidth: label === 'pH' ? 4.5 : 3.5,
+                    tension: 0.35,
+
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: color,
+                    pointBorderWidth: 0,
+
+                    /* subtle fill using opacity helper */
+                    backgroundColor: color + '22', // ~13% opacity in HEX
+
+                },
+
+                /* MIN LIMIT */
+                {
+                    data: [],
+                    borderColor: 'rgba(255,255,255,0.6)',
+                    borderWidth: 2,
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false
+                },
+
+                /* MAX LIMIT */
+                {
+                    data: [],
+                    borderColor: 'rgba(255,255,255,0.6)',
+                    borderWidth: 2,
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -298,19 +380,28 @@
             },
             scales: {
                 x: {
-                    display: false
+                    display: true,
+                    ticks: {
+                        color: 'rgba(255,255,255,0.9)',
+                        font: {
+                            weight: '600'
+                        },
+                        maxTicksLimit: 4,
+                        autoSkip: true
+                    },
+                    grid: { display: false }
                 },
                 y: {
                     beginAtZero: false,
-
-                    // 🔑 IMPORTANT PART
-                    grace: '15%',   // adds space above & below data
+                    grace: '7%',
                     ticks: {
-                        color: 'white',
+                        color: 'rgba(255,255,255,0.95)',
+                        font: {
+                            weight: '600'
+                        },
                         maxTicksLimit: 5,
-                        callback: (val) => Number(val).toFixed(2)
+                        precision: 1
                     },
-
                     grid: {
                         color: 'rgba(255,255,255,0.15)'
                     }
@@ -321,9 +412,26 @@
 }
 
 
-    const chartTemp = createChart(document.getElementById('graph1').getContext('2d'), 'Temp', 'rgba(255, 99, 132, 1)', 20, 30);
-    const chartOxigen = createChart(document.getElementById('graph2').getContext('2d'), 'Oxigen', 'rgba(54, 162, 235, 1)', 0, 15);
-    const chartPh = createChart(document.getElementById('graph3').getContext('2d'), 'pH', 'rgba(75, 192, 192, 1)', 5, 9);
+
+
+const chartTemp = createChart(
+    document.getElementById('graph1').getContext('2d'),
+    'Temp',
+    '#ff4d6d'
+);
+
+const chartOxigen = createChart(
+    document.getElementById('graph2').getContext('2d'),
+    'Oxigen',
+    '#1B4965'
+);
+
+const chartPh = createChart(
+    document.getElementById('graph3').getContext('2d'),
+    'pH',
+    '#00ffd5'
+);
+
 
     // --- 2. LOGICA DE LOGIN ---
     async function connectToTank() {
@@ -443,6 +551,27 @@ function resetBadge(id, label) {
         location.reload(); // Reincarca pagina pentru a reveni la login
     }
 
+
+    function logEvent(type, level, value) {
+    const log = document.getElementById('event-log');
+    if (!log) return;
+
+    const time = new Date().toLocaleTimeString();
+    const li = document.createElement('li');
+
+    li.className = level;
+    li.textContent = `[${time}] ${type.toUpperCase()} ${level.toUpperCase()} (${value})`;
+
+    log.prepend(li);
+
+    // Keep log size reasonable
+    if (log.children.length > 30) {
+        log.removeChild(log.lastChild);
+    }
+}
+
+
+
     // --- 3. ACTUALIZARE DATE (Polling) ---
     async function updateDashboard() {
         if (!currentTankID) return;
@@ -466,15 +595,17 @@ function resetBadge(id, label) {
                 updateBadge('filt-badge', 'Filtru', data.filtru);
 
                 // Actualizare Grafice
-                addDataToChart(chartTemp, now, data.temperatura);
-                addDataToChart(chartOxigen, now, data.oxigen);
-                addDataToChart(chartPh, now, data.ph);
+               const limits = getLimits();
 
-                const limits = getLimits();
+                addDataToChart(chartTemp, now, data.temperatura, limits.temp.min, limits.temp.max);
+                addDataToChart(chartOxigen, now, data.oxigen, limits.ox.min, limits.ox.max);
+                addDataToChart(chartPh, now, data.ph, limits.ph.min, limits.ph.max);
 
-                applyAlertStyles('temp-badge', data.temperatura, limits.temp.min, limits.temp.max);
-                applyAlertStyles('ox-badge', data.oxigen, limits.ox.min, limits.ox.max);
-                applyAlertStyles('ph-badge', data.ph, limits.ph.min, limits.ph.max);
+
+                applyAlertStyles('temp-badge', data.temperatura, limits.temp.min, limits.temp.max, 'temp', 'Temp');
+                applyAlertStyles('ox-badge', data.oxigen, limits.ox.min, limits.ox.max, 'ox', 'O2');
+                applyAlertStyles('ph-badge', data.ph, limits.ph.min, limits.ph.max, 'ph', 'pH');
+
 
 
             }
@@ -491,39 +622,30 @@ function resetBadge(id, label) {
         }
     }
 
-    function addDataToChart(chart, label, value) {
+   function addDataToChart(chart, label, value, minLimit = null, maxLimit = null) {
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
 
-    // Keep last N points
     const MAX_POINTS = 20;
+
     if (chart.data.labels.length > MAX_POINTS) {
         chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+        chart.data.datasets.forEach(ds => ds.data.shift());
     }
 
-    // ---- DYNAMIC SCALE CONTROL ----
-    const data = chart.data.datasets[0].data;
-
-    let min = Math.min(...data);
-    let max = Math.max(...data);
-
-    // Minimum visible range (prevents exaggeration)
-    const MIN_RANGE = 2;   // adjust per sensor if needed
-
-    if (max - min < MIN_RANGE) {
-        const mid = (max + min) / 2;
-        min = mid - MIN_RANGE / 2;
-        max = mid + MIN_RANGE / 2;
+    /* UPDATE LIMIT LINES */
+    if (minLimit != null) {
+        chart.data.datasets[1].data = Array(chart.data.labels.length).fill(minLimit);
     }
-
-    // Padding so line never touches edges
-    const padding = (max - min) * 0.15;
-    chart.options.scales.y.min = min - padding;
-    chart.options.scales.y.max = max + padding;
+    if (maxLimit != null) {
+        chart.data.datasets[2].data = Array(chart.data.labels.length).fill(maxLimit);
+    }
 
     chart.update('none');
 }
+
+
+
 
     // --- 4. COMENZI MQTT ---
     async function trimiteComanda(actiune) {
@@ -534,6 +656,10 @@ function resetBadge(id, label) {
         });
         // Nu dam alert ca sa fie fluid, dar poti vedea in Network tab
     }
+
+    loadLimits();
+
+
 </script>
 
 </body>

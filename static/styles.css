@@ -26,7 +26,8 @@ body {
     text-align: center;
     box-shadow: 0 2px 4px #008080;
     color: white;
-
+    font-weight:bolder;
+    letter-spacing: 4px;
     /* force edge-to-edge */
     width: 100%;
     margin: 0;
@@ -418,6 +419,36 @@ h1 {
         opacity: 1;
     }
 }
+
+/* =========================================
+   EVENT LOG
+   ========================================= */
+.event-log-card {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+#event-log {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#event-log li {
+    font-size: 0.9rem;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+#event-log li.warning {
+    color: #856404;
+}
+
+#event-log li.alert {
+    color: #721c24;
+    font-weight: bold;
+}
+
 
 /* =========================================
    RESPONSIVE – TABLET
