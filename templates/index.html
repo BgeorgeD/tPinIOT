@@ -132,18 +132,18 @@
 
         <div class="card">
 
-            <h2>Control Panel</h2>
+            <h2>Panou de control</h2>
 
             <!-- BUTTON SELECTOR -->
             <div class="control-selector">
                 <button onclick="toggleControlCard('manual-card')">
-                    Manual Controls
+                    Control Manual  
                 </button>
-                <!--<button onclick="toggleControlCard('limits-card')">
-                    Ajustare Limite
-                </button>-->
+                <button onclick="toggleControlCard('limits-card')">
+                    Setare Alarma
+                </button>
                 <button onclick="toggleControlCard('switch-card')">
-                    Switch Tank
+                    Schimbare Acvariu
                 </button>
             </div>
 
@@ -158,7 +158,7 @@
 
             <!-- MANUAL CONTROLS -->
             <div id="manual-card" class="control-card collapsed">
-                <h3>Manual Controls</h3>
+                <h3>Control Manual</h3>
 
                 <div class="controls-container">
                     <button class="controls-btn" onclick="trimiteComanda('START_AERATOR')">
@@ -186,7 +186,9 @@
 
             <!-- LIMITS -->
             <div id="limits-card" class="control-card collapsed">
-                <h3>Ajustare Limite</h3>
+                <h3>Praguri de declanșare</h3>
+                <span style=" font-size: 0.85rem; color: #555; margin-top: 6px;">! Aceste niveluri sunt doar pentru alerte vizuale și nu influențează răspunsurile automate ale sistemului.</span>
+
 
                 <div class="limits-wrapper">
                     <div class="limit-box">
@@ -212,7 +214,7 @@
 
             <!-- SWITCH TANK -->
             <div id="switch-card" class="control-card collapsed login-style-card">
-                <h3>Switch Tank</h3>
+                <h3>Schimbare Acvariu</h3>
                 <input id="switch-tank-input" type="text" placeholder="0000" maxlength="4">
                 <button onclick="switchTank()">Conectare</button>
 
