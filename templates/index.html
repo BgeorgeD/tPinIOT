@@ -699,7 +699,8 @@ let incident = {
   tankId: null,
   secondsLeft: 0,
   timerId: null,
-  recommendedAction: null
+  recommendedAction: null,
+  type: null
 };
 
 let trend = {
@@ -709,20 +710,31 @@ let trend = {
   tempDownCount: 0
 };
 
+const COOLDOWN_SECONDS = 60; // poti pune 30, 60, 120
+const incidentState = {
+  cooldownUntil: 0,
+  rearm: { o2: true, temp: true }
+};
+
+
 function resetIncidentStateForTank(tankId) {
   incident = { active: false, tankId: tankId, secondsLeft: 0, timerId: null, recommendedAction: null };
   trend = { lastO2: null, lastTemp: null, o2DownCount: 0, tempDownCount: 0 };
   // asiguram ca overlay-ul e inchis
   const ov = document.getElementById("incident-overlay");
   if (ov) ov.classList.add("hidden");
+  incidentState.cooldownUntil = 0;
+  incidentState.rearm = { o2: true, temp: true };
+
 }
 
-function startIncident(title, text, actionCmd) {
+function startIncident(title, text, actionCmd, type) {
   if (incident.active) return; // nu declansam peste altul
 
   incident.active = true;
   incident.tankId = currentTankID;            // ✅ IMPORTANT
   incident.recommendedAction = actionCmd;
+  incident.type = type;
   incident.secondsLeft = 15;
 
   document.getElementById("incident-title").innerText = title;
@@ -762,17 +774,28 @@ async function incidentAction() {
   dismissIncident();
 }
 
+function startCooldown() {
+  incidentState.cooldownUntil = Date.now() + COOLDOWN_SECONDS * 1000;
+}
+
+
 function dismissIncident() {
   if (incident.timerId) {
     clearInterval(incident.timerId);
     incident.timerId = null;
   }
+
+  // ✅ cooldown dupa ignorare / expirare / actiune
+  startCooldown();
+
   incident.active = false;
   incident.secondsLeft = 0;
   incident.recommendedAction = null;
+  incident.type = null;
 
   document.getElementById("incident-overlay").classList.add("hidden");
 }
+
 
 function detectIncident(data) {
   // per tank: daca s-a schimbat tank-ul, resetam trend/incident
@@ -782,6 +805,9 @@ function detectIncident(data) {
 
   // daca e activ, nu mai declansam altul
   if (incident.active) return;
+
+  // ✅ cooldown global
+  if (Date.now() < incidentState.cooldownUntil) return;
 
   // --- trend O2 ---
   if (trend.lastO2 !== null && data.oxigen < trend.lastO2) trend.o2DownCount++;
@@ -793,27 +819,35 @@ function detectIncident(data) {
   else trend.tempDownCount = 0;
   trend.lastTemp = data.temperatura;
 
-  //
-    // 1) O2 scade consecvent si e sub prag -> recomanda aerator
-  if (trend.o2DownCount >= 2 && data.oxigen < 6.8) {
+  // ✅ Rearm: permite un nou incident doar dupa ce revine "ok"
+  if (data.oxigen >= 7.2) incidentState.rearm.o2 = true;
+  if (data.temperatura >= 22.0) incidentState.rearm.temp = true;
+
+  // 1) O2 incident
+  if (incidentState.rearm.o2 && trend.o2DownCount >= 2 && data.oxigen < 6.8) {
+    incidentState.rearm.o2 = false;
+
     startIncident(
       "Tendință detectată: Oxigen în scădere",
       "Oxigenul scade în mod constant. Recomandare: pornește aeratorul pentru stabilizare.",
-      "START_AERATOR"
+      "START_AERATOR",
+      "O2_DOWN"
     );
     return;
   }
 
-  // 2) Temperatura scade consecvent si e sub prag -> recomanda incalzitor
-  if (trend.tempDownCount >= 2 && data.temperatura < 21.5) {
+  // 2) TEMP incident
+  if (incidentState.rearm.temp && trend.tempDownCount >= 2 && data.temperatura < 21.5) {
+    incidentState.rearm.temp = false;
+
     startIncident(
       "Tendință detectată: Temperatură în scădere",
       "Temperatura scade constant. Recomandare: pornește încălzitorul pentru stabilizare.",
-      "START_INCALZITOR"
+      "START_INCALZITOR",
+      "TEMP_DOWN"
     );
     return;
   }
-
 }
 
 
