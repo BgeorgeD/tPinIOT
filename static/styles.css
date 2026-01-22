@@ -536,37 +536,63 @@ h1 {
 }
 
 
-
 /* =========================================
-   RESPONSIVE – TABLET
+   RESPONSIVE – TABLET (FIX SIDEBAR OVERLAP)
    ========================================= */
 @media (max-width: 1000px) {
+
+    /* Hide fixed sidebar */
+    #mySidenav {
+        display: none;
+    }
+
+    /* Switch dashboard to single column */
     .dashboard-layout {
         grid-template-columns: 1fr;
         gap: 30px;
+    }
+
+    /* Remove desktop offset */
+    .left-column {
+        margin-left: 0;
+    }
+
+    /* Stack control selector buttons */
+    .control-selector {
+        grid-template-columns: 1fr;
+    }
+
+    /* Stack manual control buttons */
+    .controls-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================
+   RESPONSIVE – MOBILE (FIX SIDEBAR OVERLAP)
+   ========================================= */
+@media (max-width: 600px) {
+
+    #mySidenav {
+        display: none;
     }
 
     .left-column {
         margin-left: 0;
     }
 
-    .control-selector {
-        grid-template-columns: 1fr;
-    }
-
-    .controls-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-
-/* =========================================
-   RESPONSIVE – MOBILE
-   ========================================= */
-@media (max-width: 600px) {
     .tank-inner {
         flex: 1 1 100%;
-        height: 200px;
+        height: auto;              
+        min-height: 220px;
+        overflow: hidden;          /*  prevent spill */
+    }
+
+    .tank-inner canvas {
+        width: 100% !important;
+        height: 180px !important;  /* cap for mobile */
+        max-width: 100%;
+        display: block;
     }
 
     .tank-header h2 {
